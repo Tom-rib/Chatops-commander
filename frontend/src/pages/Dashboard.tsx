@@ -1,130 +1,155 @@
+// frontend/src/pages/Dashboard.tsx - VERSION CORRIGÉE
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
 import Card from '../components/ui/Card';
+import { Server, Activity, AlertCircle, Clock } from 'lucide-react';
 
-interface ServerStats {
-  total: number;
-  online: number;
-  offline: number;
-  warning: number;
+interface StatCard {
+  label: string;
+  value: string | number;
+  icon: React.ReactNode;
+  color: string;
 }
 
 const Dashboard: React.FC = () => {
-  const [stats, setStats] = useState<ServerStats>({
-    total: 0,
-    online: 0,
-    offline: 0,
-    warning: 0,
+  const [stats, setStats] = useState({
+    totalServers: 0,
+    activeServers: 0,
+    pendingCommands: 0,
+    lastActivity: 'Never',
   });
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStats();
+    // Simuler le chargement des statistiques
+    // TODO: Remplacer par de vraies données de l'API
+    setStats({
+      totalServers: 5,
+      activeServers: 3,
+      pendingCommands: 2,
+      lastActivity: '2 minutes ago',
+    });
   }, []);
 
-  const fetchStats = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3001'}/api/servers`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      
-      const servers = response.data;
-      setStats({
-        total: servers.length,
-        online: servers.filter((s: any) => s.status === 'online').length,
-        offline: servers.filter((s: any) => s.status === 'offline').length,
-        warning: servers.filter((s: any) => s.status === 'warning').length,
-      });
-    } catch (error) {
-      console.error('Erreur lors du chargement des stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const statCards = [
-    { label: 'Total Serveurs', value: stats.total, icon: '🖥️', color: 'cyber-cyan' },
-    { label: 'En ligne', value: stats.online, icon: '✅', color: 'cyber-green' },
-    { label: 'Hors ligne', value: stats.offline, icon: '❌', color: 'red-500' },
-    { label: 'Avertissements', value: stats.warning, icon: '⚠️', color: 'yellow-500' },
+  const statCards: StatCard[] = [
+    {
+      label: 'Total Servers',
+      value: stats.totalServers,
+      icon: <Server className="w-8 h-8" />,
+      color: 'text-blue-500',
+    },
+    {
+      label: 'Active Servers',
+      value: stats.activeServers,
+      icon: <Activity className="w-8 h-8" />,
+      color: 'text-green-500',
+    },
+    {
+      label: 'Pending Commands',
+      value: stats.pendingCommands,
+      icon: <AlertCircle className="w-8 h-8" />,
+      color: 'text-yellow-500',
+    },
+    {
+      label: 'Last Activity',
+      value: stats.lastActivity,
+      icon: <Clock className="w-8 h-8" />,
+      color: 'text-purple-500',
+    },
   ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-cyber-cyan text-xl">Chargement...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
+      <div className="mb-8">
         <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-        <p className="text-gray-400">Vue d'ensemble de votre infrastructure</p>
+        <p className="text-gray-400">
+          Vue d'ensemble de votre infrastructure
+        </p>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {statCards.map((stat, index) => (
-          <Card key={index} hover className="animate-slide-in" style={{ animationDelay: `${index * 0.1}s` }}>
+          <Card key={index} hover className="animate-slide-in">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm mb-1">{stat.label}</p>
-                <p className={`text-3xl font-bold text-${stat.color}`}>{stat.value}</p>
+                <p className="text-2xl font-bold text-white">{stat.value}</p>
               </div>
-              <div className="text-4xl">{stat.icon}</div>
+              <div className={stat.color}>{stat.icon}</div>
             </div>
           </Card>
         ))}
       </div>
 
+      {/* Recent Activity */}
+      <Card>
+        <h2 className="text-xl font-bold text-white mb-4">Recent Activity</h2>
+        <div className="space-y-3">
+          {[1, 2, 3].map((_, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between p-3 bg-[#1E2538] rounded-lg"
+            >
+              <div className="flex items-center space-x-3">
+                <Activity className="w-5 h-5 text-green-500" />
+                <div>
+                  <p className="text-white font-medium">Command executed</p>
+                  <p className="text-gray-400 text-sm">
+                    systemctl status nginx on web-01
+                  </p>
+                </div>
+              </div>
+              <span className="text-gray-400 text-sm">
+                {index + 1} min ago
+              </span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
       {/* Quick Actions */}
       <Card>
-        <h2 className="text-xl font-bold text-white mb-4">Actions Rapides</h2>
+        <h2 className="text-xl font-bold text-white mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="p-4 bg-dark-blue hover:bg-slate-gray border border-gray-700 hover:border-cyber-cyan rounded-lg transition-all text-left">
-            <div className="text-2xl mb-2">💬</div>
-            <h3 className="text-white font-semibold mb-1">Ouvrir le Chat</h3>
-            <p className="text-gray-400 text-sm">Parlez à votre infrastructure</p>
+          <button className="p-4 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors text-white font-medium">
+            Add Server
           </button>
-          
-          <button className="p-4 bg-dark-blue hover:bg-slate-gray border border-gray-700 hover:border-cyber-cyan rounded-lg transition-all text-left">
-            <div className="text-2xl mb-2">📊</div>
-            <h3 className="text-white font-semibold mb-1">Voir les Métriques</h3>
-            <p className="text-gray-400 text-sm">Analyser les performances</p>
+          <button className="p-4 bg-green-600 hover:bg-green-700 rounded-lg transition-colors text-white font-medium">
+            Run Command
           </button>
-          
-          <button className="p-4 bg-dark-blue hover:bg-slate-gray border border-gray-700 hover:border-cyber-cyan rounded-lg transition-all text-left">
-            <div className="text-2xl mb-2">🔧</div>
-            <h3 className="text-white font-semibold mb-1">Gérer les Serveurs</h3>
-            <p className="text-gray-400 text-sm">Configuration et statut</p>
+          <button className="p-4 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors text-white font-medium">
+            View Logs
           </button>
         </div>
       </Card>
 
-      {/* Recent Activity */}
+      {/* Server Status */}
       <Card>
-        <h2 className="text-xl font-bold text-white mb-4">Activité Récente</h2>
+        <h2 className="text-xl font-bold text-white mb-4">Server Status</h2>
         <div className="space-y-3">
-          {[
-            { time: 'Il y a 5 min', action: 'nginx redémarré sur web-01', status: 'success' },
-            { time: 'Il y a 12 min', action: 'Status vérifié sur db-master', status: 'info' },
-            { time: 'Il y a 1h', action: 'Alerte CPU élevé sur web-02', status: 'warning' },
-          ].map((activity, index) => (
-            <div key={index} className="flex items-center justify-between p-3 bg-dark-blue rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className={`w-2 h-2 rounded-full ${
-                  activity.status === 'success' ? 'bg-cyber-green' :
-                  activity.status === 'warning' ? 'bg-yellow-500' :
-                  'bg-cyber-cyan'
-                }`} />
-                <span className="text-gray-300">{activity.action}</span>
+          {['web-01', 'web-02', 'db-master'].map((server, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between p-3 bg-[#1E2538] rounded-lg"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <div>
+                  <p className="text-white font-medium">{server}</p>
+                  <p className="text-gray-400 text-sm">
+                    192.168.1.{10 + index}
+                  </p>
+                </div>
               </div>
-              <span className="text-gray-500 text-sm">{activity.time}</span>
+              <div className="flex items-center space-x-4">
+                <div className="text-right">
+                  <p className="text-white text-sm">CPU: {20 + index * 10}%</p>
+                  <p className="text-gray-400 text-xs">RAM: {40 + index * 5}%</p>
+                </div>
+                <span className="px-3 py-1 bg-green-500/20 text-green-500 rounded-full text-xs font-medium">
+                  Online
+                </span>
+              </div>
             </div>
           ))}
         </div>

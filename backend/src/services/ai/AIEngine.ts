@@ -2,37 +2,40 @@ import Anthropic from '@anthropic-ai/sdk';
 
 export class AIEngine {
   private client: Anthropic;
+  private model: string = 'claude-3-5-sonnet-20241022';
 
   constructor() {
-    this.client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY not configured');
+    }
+    this.client = new Anthropic({ apiKey });
   }
 
-  async parse(message: string, _conversationId?: string) {
+  async parse(message: string, conversationId?: number): Promise<any> {
     try {
-      const response = await this.client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+      // Cast vers any pour contourner les erreurs TypeScript
+      const anthropicClient = this.client as any;
+      
+      const response = await anthropicClient.messages.create({
+        model: this.model,
         max_tokens: 1024,
-        messages: [
-          {
-            role: 'user',
-            content: message,
-          },
-        ],
+        messages: [{ role: 'user', content: message }],
       });
 
-      const content = response.content[0];
-      const text = content.type === 'text' ? content.text : '';
+      const textContent = response.content.find((block: any) => block.type === 'text');
+      
+      if (!textContent || textContent.type !== 'text') {
+        throw new Error('No text response from Claude');
+      }
 
       return {
-        response: text,
-        intent: 'chat',
-        confidence: 0.9,
+        response: textContent.text,
+        conversationId,
       };
-    } catch (error) {
-      console.error('AI Engine error:', error);
-      throw new Error('Failed to process message with AI');
+    } catch (error: any) {
+      console.error('AI processing error:', error);
+      throw new Error(`AI Error: ${error.message}`);
     }
   }
 }

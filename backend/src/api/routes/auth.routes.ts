@@ -1,23 +1,34 @@
 import express, { Request, Response } from 'express';
-import { AuthService } from '../../services/auth/AuthService';
-import { authenticate } from '../../middleware/authentication';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import pool from '../../config/database';
 
 const router = express.Router();
-const authService = new AuthService();
 
 router.post('/register', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { username, email, password, role } = req.body;
+    const { email, username, password } = req.body;
 
-    if (!username || !email || !password) {
-      res.status(400).json({ error: 'Missing required fields' });
+    if (!email || !username || !password) {
+      res.status(400).json({ error: 'All fields required' });
       return;
     }
 
-    const result = await authService.register({ username, email, password, role });
-    res.status(201).json(result);
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await pool.query(
+      'INSERT INTO users (email, username, password_hash) VALUES ($1, $2, $3) RETURNING id, email, username',
+      [email, username, hashedPassword]
+    );
+
+    res.status(201).json({ user: result.rows[0] });
   } catch (error: any) {
-    res.status(400).json({ error: error.message || 'Registration failed' });
+    if (error.code === '23505') {
+      res.status(409).json({ error: 'User already exists' });
+      return;
+    }
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Registration failed' });
   }
 });
 
@@ -30,29 +41,41 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const result = await authService.login(email, password);
-    res.json(result);
-  } catch (error: any) {
-    res.status(401).json({ error: error.message || 'Login failed' });
-  }
-});
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
 
-router.post('/logout', authenticate, async (req: Request, res: Response): Promise<void> => {
-  try {
-    const userId = (req as any).user.id;
-    await authService.logout(userId);
-    res.json({ message: 'Logged out successfully' });
-  } catch (error) {
-    res.status(500).json({ error: 'Logout failed' });
-  }
-});
+    if (result.rows.length === 0) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
 
-router.get('/me', authenticate, async (_req: Request, res: Response): Promise<void> => {
-  try {
-    const user = (res.locals as any).user;
-    res.json(user);
+    const user = result.rows[0];
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+
+    if (!validPassword) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET || 'default-secret',
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+      },
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to get user' });
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
   }
 });
 

@@ -4,37 +4,16 @@ import pool from '../../config/database';
 
 const router = express.Router();
 
-// Types
-interface Server {
-  id: number;
-  name: string;
-  host: string;
-  port: number;
-  username: string;
-  status: 'online' | 'offline' | 'warning';
-  tags?: string[];
-  user_id: number;
-}
-
 // GET /api/servers - Liste tous les serveurs de l'utilisateur
-router.get('/', authenticate, async (req: Request, res: Response) => {
+router.get('/', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
 
     const result = await pool.query(
-      `SELECT 
-        id, 
-        name, 
-        host, 
-        port, 
-        username, 
-        status, 
-        tags, 
-        created_at, 
-        updated_at 
-      FROM servers 
-      WHERE user_id = $1 
-      ORDER BY created_at DESC`,
+      `SELECT id, name, host, port, username, status, tags, created_at, updated_at 
+       FROM servers 
+       WHERE user_id = $1 
+       ORDER BY created_at DESC`,
       [userId]
     );
 
@@ -46,33 +25,26 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
 });
 
 // GET /api/servers/:id - Obtenir un serveur spécifique
-router.get('/:id', authenticate, async (req: Request, res: Response) => {
+router.get('/:id', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
     const serverId = parseInt(req.params.id);
 
     if (isNaN(serverId)) {
-      return res.status(400).json({ error: 'Invalid server ID' });
+      res.status(400).json({ error: 'Invalid server ID' });
+      return;
     }
 
     const result = await pool.query(
-      `SELECT 
-        id, 
-        name, 
-        host, 
-        port, 
-        username, 
-        status, 
-        tags, 
-        created_at, 
-        updated_at 
-      FROM servers 
-      WHERE id = $1 AND user_id = $2`,
+      `SELECT id, name, host, port, username, status, tags, created_at, updated_at 
+       FROM servers 
+       WHERE id = $1 AND user_id = $2`,
       [serverId, userId]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Server not found' });
+      res.status(404).json({ error: 'Server not found' });
+      return;
     }
 
     res.json(result.rows[0]);
@@ -83,24 +55,20 @@ router.get('/:id', authenticate, async (req: Request, res: Response) => {
 });
 
 // POST /api/servers - Ajouter un nouveau serveur
-router.post('/', authenticate, async (req: Request, res: Response) => {
+router.post('/', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
     const { name, host, port, username, password, tags } = req.body;
 
-    // Validation
     if (!name || !host || !username) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: name, host, username' 
-      });
+      res.status(400).json({ error: 'Missing required fields: name, host, username' });
+      return;
     }
 
-    // Insérer le serveur
     const result = await pool.query(
-      `INSERT INTO servers 
-        (name, host, port, username, password, tags, user_id, status) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-      RETURNING id, name, host, port, username, status, tags, created_at`,
+      `INSERT INTO servers (name, host, port, username, password, tags, user_id, status) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+       RETURNING id, name, host, port, username, status, tags, created_at`,
       [name, host, port || 22, username, password, tags || [], userId, 'online']
     );
 
@@ -112,27 +80,27 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
 });
 
 // PUT /api/servers/:id - Mettre à jour un serveur
-router.put('/:id', authenticate, async (req: Request, res: Response) => {
+router.put('/:id', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
     const serverId = parseInt(req.params.id);
     const { name, host, port, username, password, tags, status } = req.body;
 
     if (isNaN(serverId)) {
-      return res.status(400).json({ error: 'Invalid server ID' });
+      res.status(400).json({ error: 'Invalid server ID' });
+      return;
     }
 
-    // Vérifier que le serveur appartient à l'utilisateur
     const checkResult = await pool.query(
       'SELECT id FROM servers WHERE id = $1 AND user_id = $2',
       [serverId, userId]
     );
 
     if (checkResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Server not found' });
+      res.status(404).json({ error: 'Server not found' });
+      return;
     }
 
-    // Construire la requête de mise à jour dynamiquement
     const updates: string[] = [];
     const values: any[] = [];
     let paramCount = 1;
@@ -167,17 +135,17 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
     }
 
     if (updates.length === 0) {
-      return res.status(400).json({ error: 'No fields to update' });
+      res.status(400).json({ error: 'No fields to update' });
+      return;
     }
 
     updates.push(`updated_at = NOW()`);
     values.push(serverId, userId);
 
     const result = await pool.query(
-      `UPDATE servers 
-      SET ${updates.join(', ')} 
-      WHERE id = $${paramCount++} AND user_id = $${paramCount++} 
-      RETURNING id, name, host, port, username, status, tags, updated_at`,
+      `UPDATE servers SET ${updates.join(', ')} 
+       WHERE id = $${paramCount++} AND user_id = $${paramCount++} 
+       RETURNING id, name, host, port, username, status, tags, updated_at`,
       values
     );
 
@@ -189,13 +157,14 @@ router.put('/:id', authenticate, async (req: Request, res: Response) => {
 });
 
 // DELETE /api/servers/:id - Supprimer un serveur
-router.delete('/:id', authenticate, async (req: Request, res: Response) => {
+router.delete('/:id', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user.id;
     const serverId = parseInt(req.params.id);
 
     if (isNaN(serverId)) {
-      return res.status(400).json({ error: 'Invalid server ID' });
+      res.status(400).json({ error: 'Invalid server ID' });
+      return;
     }
 
     const result = await pool.query(
@@ -204,7 +173,8 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Server not found' });
+      res.status(404).json({ error: 'Server not found' });
+      return;
     }
 
     res.json({ message: 'Server deleted successfully', id: serverId });
