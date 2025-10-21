@@ -4,6 +4,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
+  children: React.ReactNode;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -15,13 +16,13 @@ const Button: React.FC<ButtonProps> = ({
   disabled,
   ...props
 }) => {
-  const baseClasses = 'font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2';
+  const baseClasses = 'font-semibold rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed';
   
   const variantClasses = {
-    primary: 'bg-cyber-cyan text-deep-black hover:bg-cyber-green hover:shadow-cyber-green disabled:bg-slate-gray disabled:text-gray-500',
-    secondary: 'bg-slate-gray text-white hover:bg-dark-blue border border-cyber-cyan disabled:opacity-50',
-    danger: 'bg-red-600 text-white hover:bg-red-700 disabled:opacity-50',
-    ghost: 'bg-transparent text-cyber-cyan hover:bg-slate-gray disabled:opacity-50',
+    primary: 'bg-cyber-cyan text-deep-black hover:bg-cyber-green hover:shadow-cyber-green',
+    secondary: 'bg-slate-gray text-white hover:bg-dark-blue border border-cyber-cyan',
+    danger: 'bg-red-600 text-white hover:bg-red-700',
+    ghost: 'bg-transparent text-cyber-cyan hover:bg-slate-gray',
   };
   
   const sizeClasses = {

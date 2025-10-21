@@ -1,15 +1,21 @@
-import express, { Application } from 'express';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import morgan from 'morgan';
 import { createServer } from 'http';
-import { Server } from 'socket.io';
+import { Server as SocketIOServer } from 'socket.io';
 import dotenv from 'dotenv';
-import { authRouter } from './api/routes/auth.routes';
-import { chatRouter } from './api/routes/chat.routes';
-import { serversRouter } from './api/routes/servers.routes';
+
+// Routes
+import authRoutes from './api/routes/auth.routes';
+import chatRoutes from './api/routes/chat.routes';
+import serversRoutes from './api/routes/servers.routes';
+
+// Middleware
 import { errorHandler } from './middleware/errorHandler';
-import { setupWebSocket } from './services/websocket/socketManager';
-import { logger } from './utils/logger';
+
+// Config
+import { initDatabase } from './config/database';
 
 // Load environment variables
 dotenv.config();
@@ -17,50 +23,108 @@ dotenv.config();
 // Create Express app
 const app: Application = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
+
+// Socket.io setup
+const io = new SocketIOServer(httpServer, {
   cors: {
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true
-  }
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
 });
 
 // Middleware
 app.use(helmet());
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
+  credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(morgan('combined'));
 
-// Logging middleware
-app.use((req, res, next) => {
-  logger.info(`${req.method} ${req.path}`);
-  next();
-});
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check endpoint
+app.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
 });
 
 // API Routes
-app.use('/api/auth', authRouter);
-app.use('/api/chat', chatRouter);
-app.use('/api/servers', serversRouter);
+app.use('/api/auth', authRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/servers', serversRoutes);
 
-// WebSocket setup
-setupWebSocket(io);
+// 404 handler
+app.use((req: Request, res: Response) => {
+  res.status(404).json({
+    error: 'Route not found',
+    path: req.path,
+  });
+});
 
 // Error handler (must be last)
 app.use(errorHandler);
 
-// Start server
-const PORT = process.env.PORT || 3001;
-httpServer.listen(PORT, () => {
-  logger.info(`🚀 Server running on port ${PORT}`);
-  logger.info(`📡 WebSocket ready`);
-  logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log(`Client connected: ${socket.id}`);
+
+  socket.on('disconnect', () => {
+    console.log(`Client disconnected: ${socket.id}`);
+  });
+
+  // Add more socket event handlers here
+  socket.on('chat:message', (data) => {
+    console.log('Chat message received:', data);
+    // Handle chat messages
+  });
 });
+
+// Initialize database and start server
+const PORT = process.env.PORT || 3001;
+
+const startServer = async () => {
+  try {
+    // Initialize database connection
+    await initDatabase();
+    console.log('✅ Database connected');
+
+    // Start HTTP server
+    httpServer.listen(PORT, () => {
+      console.log(`✅ Server running on port ${PORT}`);
+      console.log(`📡 API available at http://localhost:${PORT}`);
+      console.log(`🔌 WebSocket available at ws://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Handle unhandled rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  httpServer.close(() => {
+    console.log('HTTP server closed');
+    process.exit(0);
+  });
+});
+
+// Start the server
+startServer();
 
 export { app, io };
