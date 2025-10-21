@@ -1,234 +1,217 @@
-import { Router, Request, Response } from 'express';
-import { authenticate, requireRole } from '../../middleware/authentication';
-import { db } from '../../config/database';
-import { sshClient } from '../../services/execution/SSHClient';
-import { logger } from '../../utils/logger';
-import { asyncHandler } from '../../middleware/errorHandler';
+import express, { Request, Response } from 'express';
+import { authenticate } from '../../middleware/authentication';
+import pool from '../../config/database';
 
-const router = Router();
+const router = express.Router();
 
-// Tous les endpoints nécessitent l'authentification
-router.use(authenticate);
+// Types
+interface Server {
+  id: number;
+  name: string;
+  host: string;
+  port: number;
+  username: string;
+  status: 'online' | 'offline' | 'warning';
+  tags?: string[];
+  user_id: number;
+}
 
-/**
- * GET /api/servers
- * Liste tous les serveurs
- */
-router.get('/', asyncHandler(async (req: Request, res: Response) => {
-  const result = await db.query(
-    `INSERT INTO servers (name, hostname, ip_address, port, ssh_user, ssh_key_path, tags, created_by)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-     RETURNING id, name, hostname, ip_address, port, ssh_user, tags, status, created_at`,
-    [name, hostname, ipAddress, port, sshUser, sshKeyPath, JSON.stringify(tags), userId]
-  );
-  
-  logger.info(`Server created: ${name} by ${req.user!.email}`);
-  
-  res.status(201).json({
-    success: true,
-    data: result.rows[0]
-  });
-}));
-
-/**
- * PUT /api/servers/:id
- * Mettre à jour un serveur (admin uniquement)
- */
-router.put('/:id', requireRole('admin'), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { name, hostname, ipAddress, port, sshUser, sshKeyPath, tags } = req.body;
-  
-  const result = await db.query(
-    `UPDATE servers 
-     SET name = COALESCE($1, name),
-         hostname = COALESCE($2, hostname),
-         ip_address = COALESCE($3, ip_address),
-         port = COALESCE($4, port),
-         ssh_user = COALESCE($5, ssh_user),
-         ssh_key_path = COALESCE($6, ssh_key_path),
-         tags = COALESCE($7, tags)
-     WHERE id = $8
-     RETURNING id, name, hostname, ip_address, port, ssh_user, tags, status`,
-    [name, hostname, ipAddress, port, sshUser, sshKeyPath, tags ? JSON.stringify(tags) : null, id]
-  );
-  
-  if (result.rows.length === 0) {
-    return res.status(404).json({ error: 'Server not found' });
-  }
-  
-  logger.info(`Server updated: ${id} by ${req.user!.email}`);
-  
-  res.json({
-    success: true,
-    data: result.rows[0]
-  });
-}));
-
-/**
- * DELETE /api/servers/:id
- * Supprimer un serveur (admin uniquement)
- */
-router.delete('/:id', requireRole('admin'), asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  const result = await db.query('DELETE FROM servers WHERE id = $1 RETURNING name', [id]);
-  
-  if (result.rows.length === 0) {
-    return res.status(404).json({ error: 'Server not found' });
-  }
-  
-  // Disconnect SSH if connected
-  await sshClient.disconnect(id);
-  
-  logger.info(`Server deleted: ${result.rows[0].name} by ${req.user!.email}`);
-  
-  res.json({
-    success: true,
-    message: 'Server deleted successfully'
-  });
-}));
-
-/**
- * POST /api/servers/:id/test
- * Tester la connexion SSH à un serveur
- */
-router.post('/:id/test', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  const serverResult = await db.query('SELECT * FROM servers WHERE id = $1', [id]);
-  
-  if (serverResult.rows.length === 0) {
-    return res.status(404).json({ error: 'Server not found' });
-  }
-  
-  const server = serverResult.rows[0];
-  
+// GET /api/servers - Liste tous les serveurs de l'utilisateur
+router.get('/', authenticate, async (req: Request, res: Response) => {
   try {
-    await sshClient.connect(server);
-    const result = await sshClient.executeCommand(id, 'echo "Connection test"');
-    
-    // Update server status
-    await db.query(
-      'UPDATE servers SET status = $1, last_check = NOW() WHERE id = $2',
-      ['online', id]
-    );
-    
-    res.json({
-      success: true,
-      message: 'Connection successful',
-      output: result.output
-    });
-  } catch (error: any) {
-    await db.query(
-      'UPDATE servers SET status = $1, last_check = NOW() WHERE id = $2',
-      ['error', id]
-    );
-    
-    res.status(500).json({
-      success: false,
-      error: 'Connection failed',
-      details: error.message
-    });
-  }
-}));
+    const userId = (req as any).user.id;
 
-/**
- * GET /api/servers/:id/metrics
- * Obtenir les métriques d'un serveur
- */
-router.get('/:id/metrics', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  const serverResult = await db.query('SELECT * FROM servers WHERE id = $1', [id]);
-  
-  if (serverResult.rows.length === 0) {
-    return res.status(404).json({ error: 'Server not found' });
+    const result = await pool.query(
+      `SELECT 
+        id, 
+        name, 
+        host, 
+        port, 
+        username, 
+        status, 
+        tags, 
+        created_at, 
+        updated_at 
+      FROM servers 
+      WHERE user_id = $1 
+      ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching servers:', error);
+    res.status(500).json({ error: 'Failed to fetch servers' });
   }
-  
-  const server = serverResult.rows[0];
-  
+});
+
+// GET /api/servers/:id - Obtenir un serveur spécifique
+router.get('/:id', authenticate, async (req: Request, res: Response) => {
   try {
-    await sshClient.connect(server);
-    
-    // Execute multiple commands to get metrics
-    const cpuResult = await sshClient.executeCommand(
-      id, 
-      "top -bn1 | grep 'Cpu(s)' | sed 's/.*, *\\([0-9.]*\\)%* id.*/\\1/' | awk '{print 100 - $1}'"
-    );
-    
-    const memResult = await sshClient.executeCommand(
-      id,
-      "free | grep Mem | awk '{print ($3/$2) * 100.0}'"
-    );
-    
-    const diskResult = await sshClient.executeCommand(
-      id,
-      "df -h / | tail -1 | awk '{print $5}' | sed 's/%//'"
-    );
-    
-    res.json({
-      success: true,
-      data: {
-        cpu: parseFloat(cpuResult.output.trim()) || 0,
-        memory: parseFloat(memResult.output.trim()) || 0,
-        disk: parseFloat(diskResult.output.trim()) || 0,
-        timestamp: new Date()
-      }
-    });
-  } catch (error: any) {
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch metrics',
-      details: error.message
-    });
-  }
-}));
+    const userId = (req as any).user.id;
+    const serverId = parseInt(req.params.id);
 
-export { router as serversRouter };'SELECT id, name, hostname, ip_address, port, ssh_user, tags, status, last_check, created_at FROM servers ORDER BY name'
-  );
-  
-  res.json({
-    success: true,
-    data: result.rows
-  });
-}));
+    if (isNaN(serverId)) {
+      return res.status(400).json({ error: 'Invalid server ID' });
+    }
 
-/**
- * GET /api/servers/:id
- * Détails d'un serveur
- */
-router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  
-  const result = await db.query(
-    'SELECT id, name, hostname, ip_address, port, ssh_user, tags, status, last_check, created_at FROM servers WHERE id = $1',
-    [id]
-  );
-  
-  if (result.rows.length === 0) {
-    return res.status(404).json({ error: 'Server not found' });
-  }
-  
-  res.json({
-    success: true,
-    data: result.rows[0]
-  });
-}));
+    const result = await pool.query(
+      `SELECT 
+        id, 
+        name, 
+        host, 
+        port, 
+        username, 
+        status, 
+        tags, 
+        created_at, 
+        updated_at 
+      FROM servers 
+      WHERE id = $1 AND user_id = $2`,
+      [serverId, userId]
+    );
 
-/**
- * POST /api/servers
- * Créer un nouveau serveur (admin uniquement)
- */
-router.post('/', requireRole('admin'), asyncHandler(async (req: Request, res: Response) => {
-  const { name, hostname, ipAddress, port = 22, sshUser, sshKeyPath, tags = [] } = req.body;
-  
-  // Validation
-  if (!name || !hostname || !ipAddress || !sshUser) {
-    return res.status(400).json({ 
-      error: 'Name, hostname, IP address and SSH user are required' 
-    });
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error fetching server:', error);
+    res.status(500).json({ error: 'Failed to fetch server' });
   }
-  
-  const userId = req.user!.userId;
-  
-  const result = await db.query(
+});
+
+// POST /api/servers - Ajouter un nouveau serveur
+router.post('/', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const { name, host, port, username, password, tags } = req.body;
+
+    // Validation
+    if (!name || !host || !username) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: name, host, username' 
+      });
+    }
+
+    // Insérer le serveur
+    const result = await pool.query(
+      `INSERT INTO servers 
+        (name, host, port, username, password, tags, user_id, status) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+      RETURNING id, name, host, port, username, status, tags, created_at`,
+      [name, host, port || 22, username, password, tags || [], userId, 'online']
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating server:', error);
+    res.status(500).json({ error: 'Failed to create server' });
+  }
+});
+
+// PUT /api/servers/:id - Mettre à jour un serveur
+router.put('/:id', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const serverId = parseInt(req.params.id);
+    const { name, host, port, username, password, tags, status } = req.body;
+
+    if (isNaN(serverId)) {
+      return res.status(400).json({ error: 'Invalid server ID' });
+    }
+
+    // Vérifier que le serveur appartient à l'utilisateur
+    const checkResult = await pool.query(
+      'SELECT id FROM servers WHERE id = $1 AND user_id = $2',
+      [serverId, userId]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+
+    // Construire la requête de mise à jour dynamiquement
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramCount = 1;
+
+    if (name !== undefined) {
+      updates.push(`name = $${paramCount++}`);
+      values.push(name);
+    }
+    if (host !== undefined) {
+      updates.push(`host = $${paramCount++}`);
+      values.push(host);
+    }
+    if (port !== undefined) {
+      updates.push(`port = $${paramCount++}`);
+      values.push(port);
+    }
+    if (username !== undefined) {
+      updates.push(`username = $${paramCount++}`);
+      values.push(username);
+    }
+    if (password !== undefined) {
+      updates.push(`password = $${paramCount++}`);
+      values.push(password);
+    }
+    if (tags !== undefined) {
+      updates.push(`tags = $${paramCount++}`);
+      values.push(tags);
+    }
+    if (status !== undefined) {
+      updates.push(`status = $${paramCount++}`);
+      values.push(status);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    updates.push(`updated_at = NOW()`);
+    values.push(serverId, userId);
+
+    const result = await pool.query(
+      `UPDATE servers 
+      SET ${updates.join(', ')} 
+      WHERE id = $${paramCount++} AND user_id = $${paramCount++} 
+      RETURNING id, name, host, port, username, status, tags, updated_at`,
+      values
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating server:', error);
+    res.status(500).json({ error: 'Failed to update server' });
+  }
+});
+
+// DELETE /api/servers/:id - Supprimer un serveur
+router.delete('/:id', authenticate, async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.id;
+    const serverId = parseInt(req.params.id);
+
+    if (isNaN(serverId)) {
+      return res.status(400).json({ error: 'Invalid server ID' });
+    }
+
+    const result = await pool.query(
+      'DELETE FROM servers WHERE id = $1 AND user_id = $2 RETURNING id',
+      [serverId, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Server not found' });
+    }
+
+    res.json({ message: 'Server deleted successfully', id: serverId });
+  } catch (error) {
+    console.error('Error deleting server:', error);
+    res.status(500).json({ error: 'Failed to delete server' });
+  }
+});
+
+export default router;

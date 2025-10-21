@@ -1,105 +1,33 @@
-import { Router, Request, Response } from 'express';
-import { authService } from '../../services/auth/AuthService';
-import { logger } from '../../utils/logger';
-import { asyncHandler } from '../../middleware/errorHandler';
+import express, { Request, Response } from 'express';
+import { authenticate } from '../../middleware/authentication';
+import { AIEngine } from '../../services/ai/AIEngine';
 
-const router = Router();
+const router = express.Router();
+const aiEngine = new AIEngine();
 
-/**
- * POST /api/auth/register
- * Créer un nouveau compte utilisateur
- */
-router.post('/register', asyncHandler(async (req: Request, res: Response) => {
-  const { email, password, name } = req.body;
-  
-  // Validation
-  if (!email || !password || !name) {
-    return res.status(400).json({ error: 'Email, password and name are required' });
-  }
-  
-  if (password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
-  }
-  
+router.post('/', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = await authService.register(email, password, name);
-    
-    res.status(201).json({
-      success: true,
-      user: result.user,
-      tokens: result.tokens
-    });
-  } catch (error: any) {
-    if (error.message === 'User already exists') {
-      return res.status(409).json({ error: 'User already exists' });
+    const { message, conversationId } = req.body;
+
+    if (!message) {
+      res.status(400).json({ error: 'Message is required' });
+      return;
     }
-    throw error;
-  }
-}));
 
-/**
- * POST /api/auth/login
- * Connexion utilisateur
- */
-router.post('/login', asyncHandler(async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  
-  // Validation
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
+    const response = await aiEngine.parse(message, conversationId);
+    res.json(response);
+  } catch (error) {
+    console.error('Chat error:', error);
+    res.status(500).json({ error: 'Failed to process message' });
   }
-  
-  try {
-    const result = await authService.login(email, password);
-    
-    res.json({
-      success: true,
-      user: result.user,
-      tokens: result.tokens
-    });
-  } catch (error: any) {
-    if (error.message === 'Invalid credentials') {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-    throw error;
-  }
-}));
-
-/**
- * POST /api/auth/refresh
- * Rafraîchir le access token
- */
-router.post('/refresh', asyncHandler(async (req: Request, res: Response) => {
-  const { refreshToken } = req.body;
-  
-  if (!refreshToken) {
-    return res.status(400).json({ error: 'Refresh token is required' });
-  }
-  
-  try {
-    const accessToken = await authService.refreshAccessToken(refreshToken);
-    
-    res.json({
-      success: true,
-      accessToken
-    });
-  } catch (error: any) {
-    return res.status(401).json({ error: 'Invalid refresh token' });
-  }
-}));
-
-/**
- * POST /api/auth/logout
- * Déconnexion (côté client, invalide les tokens)
- */
-router.post('/logout', (req: Request, res: Response) => {
-  // En JWT stateless, le logout est géré côté client
-  // On peut ajouter une blacklist Redis pour plus de sécurité
-  
-  res.json({
-    success: true,
-    message: 'Logged out successfully'
-  });
 });
 
-export { router as authRouter };
+router.get('/history', authenticate, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    res.json({ conversations: [] });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch history' });
+  }
+});
+
+export default router;

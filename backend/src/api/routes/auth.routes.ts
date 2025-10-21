@@ -1,105 +1,59 @@
-import { Router, Request, Response } from 'express';
-import { authService } from '../../services/auth/AuthService';
-import { logger } from '../../utils/logger';
-import { asyncHandler } from '../../middleware/errorHandler';
+import express, { Request, Response } from 'express';
+import { AuthService } from '../../services/auth/AuthService';
+import { authenticate } from '../../middleware/authentication';
 
-const router = Router();
+const router = express.Router();
+const authService = new AuthService();
 
-/**
- * POST /api/auth/register
- * Créer un nouveau compte utilisateur
- */
-router.post('/register', asyncHandler(async (req: Request, res: Response) => {
-  const { email, password, name } = req.body;
-  
-  // Validation
-  if (!email || !password || !name) {
-    return res.status(400).json({ error: 'Email, password and name are required' });
-  }
-  
-  if (password.length < 8) {
-    return res.status(400).json({ error: 'Password must be at least 8 characters' });
-  }
-  
+router.post('/register', async (req: Request, res: Response): Promise<void> => {
   try {
-    const result = await authService.register(email, password, name);
-    
-    res.status(201).json({
-      success: true,
-      user: result.user,
-      tokens: result.tokens
-    });
-  } catch (error: any) {
-    if (error.message === 'User already exists') {
-      return res.status(409).json({ error: 'User already exists' });
+    const { username, email, password, role } = req.body;
+
+    if (!username || !email || !password) {
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
     }
-    throw error;
-  }
-}));
 
-/**
- * POST /api/auth/login
- * Connexion utilisateur
- */
-router.post('/login', asyncHandler(async (req: Request, res: Response) => {
-  const { email, password } = req.body;
-  
-  // Validation
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
-  }
-  
-  try {
-    const result = await authService.login(email, password);
-    
-    res.json({
-      success: true,
-      user: result.user,
-      tokens: result.tokens
-    });
+    const result = await authService.register({ username, email, password, role });
+    res.status(201).json(result);
   } catch (error: any) {
-    if (error.message === 'Invalid credentials') {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-    throw error;
+    res.status(400).json({ error: error.message || 'Registration failed' });
   }
-}));
-
-/**
- * POST /api/auth/refresh
- * Rafraîchir le access token
- */
-router.post('/refresh', asyncHandler(async (req: Request, res: Response) => {
-  const { refreshToken } = req.body;
-  
-  if (!refreshToken) {
-    return res.status(400).json({ error: 'Refresh token is required' });
-  }
-  
-  try {
-    const accessToken = await authService.refreshAccessToken(refreshToken);
-    
-    res.json({
-      success: true,
-      accessToken
-    });
-  } catch (error: any) {
-    return res.status(401).json({ error: 'Invalid refresh token' });
-  }
-}));
-
-/**
- * POST /api/auth/logout
- * Déconnexion (côté client, invalide les tokens)
- */
-router.post('/logout', (req: Request, res: Response) => {
-  // En JWT stateless, le logout est géré côté client
-  // On peut ajouter une blacklist Redis pour plus de sécurité
-  
-  res.json({
-    success: true,
-    message: 'Logged out successfully'
-  });
 });
 
-export { router as authRouter };
+router.post('/login', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      res.status(400).json({ error: 'Email and password required' });
+      return;
+    }
+
+    const result = await authService.login(email, password);
+    res.json(result);
+  } catch (error: any) {
+    res.status(401).json({ error: error.message || 'Login failed' });
+  }
+});
+
+router.post('/logout', authenticate, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userId = (req as any).user.id;
+    await authService.logout(userId);
+    res.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Logout failed' });
+  }
+});
+
+router.get('/me', authenticate, async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const user = (res.locals as any).user;
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+export default router;
