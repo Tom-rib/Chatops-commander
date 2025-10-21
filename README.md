@@ -251,9 +251,9 @@ Ce projet est sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus
 ## 👨‍💻 Auteur
 
 **Votre Nom**
-- GitHub: [@votre-nom](https://github.com/votre-nom)
-- LinkedIn: [Votre Profil](https://linkedin.com/in/votre-nom)
-- Email: contact@example.com
+- GitHub: [@votre-nom](https://github.com/Tom-rib)
+- LinkedIn: [Votre Profil](www.linkedin.com/in/tom-ribero-462ba2339)
+- Email: tom.ribero@laplateforme.io
 
 ---
 
