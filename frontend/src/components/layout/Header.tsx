@@ -1,46 +1,42 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 interface HeaderProps {
-  onMenuClick: () => void;
+  showAuth?: boolean;
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
-  const navigate = useNavigate();
-  const username = localStorage.getItem('username') || 'Admin';
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    navigate('/login');
-  };
-
+const Header: React.FC<HeaderProps> = ({ showAuth = true }) => {
   return (
-    <header className="h-16 bg-slate-gray border-b border-gray-700 flex items-center justify-between px-6">
-      {/* Left: Menu button */}
-      <button
-        onClick={onMenuClick}
-        className="text-gray-400 hover:text-cyber-cyan transition-colors p-2"
-        aria-label="Toggle menu"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+    <header className="bg-slate-gray border-b border-gray-700 sticky top-0 z-50">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <img src="/apple-touch-icon.png" alt="ChatOps Commander" className="h-10 w-10 rounded-lg" />
+            <div>
+              <h1 className="text-white font-bold text-xl">ChatOps Commander</h1>
+              <p className="text-text-secondary text-xs">Parlez à votre infrastructure</p>
+            </div>
+          </Link>
 
-      {/* Right: User menu */}
-      <div className="flex items-center gap-4">
-        <div className="text-sm">
-          <span className="text-gray-400">Bonjour,</span>{' '}
-          <span className="text-cyber-cyan font-semibold">{username}</span>
+          {/* Navigation */}
+          {showAuth && (
+            <nav className="flex items-center gap-4">
+              <Link 
+                to="/login" 
+                className="text-text-secondary hover:text-cyber-cyan transition-colors px-4 py-2"
+              >
+                Connexion
+              </Link>
+              <Link 
+                to="/register" 
+                className="bg-cyber-cyan hover:bg-opacity-80 text-deep-black font-semibold px-6 py-2 rounded-lg transition-all glow-cyan"
+              >
+                Inscription
+              </Link>
+            </nav>
+          )}
         </div>
-        
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 text-sm bg-red-600/20 text-red-400 hover:bg-red-600/30 rounded-lg transition-colors"
-        >
-          Déconnexion
-        </button>
       </div>
     </header>
   );
