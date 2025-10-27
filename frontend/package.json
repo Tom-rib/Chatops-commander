@@ -1,33 +1,40 @@
 {
   "name": "chatops-commander-frontend",
   "version": "1.0.0",
-  "description": "ChatOps Commander - Parlez à votre infrastructure",
+  "description": "Frontend React pour ChatOps Commander - Interface de chat DevOps avec IA",
   "private": true,
   "dependencies": {
-    "@types/node": "^20.10.0",
-    "@types/react": "^18.2.45",
-    "@types/react-dom": "^18.2.18",
-    "@types/react-router-dom": "^5.3.3",
-    "axios": "^1.6.2",
-    "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.1",
-    "socket.io-client": "^4.5.4",
-    "typescript": "^5.3.3"
+    "axios": "^1.6.2",
+    "socket.io-client": "^4.6.1",
+    "react-icons": "^4.12.0",
+    "react-markdown": "^9.0.1",
+    "date-fns": "^3.0.6",
+    "clsx": "^2.0.6"
   },
   "devDependencies": {
+    "@types/react": "^18.2.45",
+    "@types/react-dom": "^18.2.18",
+    "@types/node": "^20.10.6",
     "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.16",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.10",
+    "tailwindcss": "^3.4.0",
     "postcss": "^8.4.32",
-    "tailwindcss": "^3.3.6",
-    "vite": "^5.0.7"
+    "autoprefixer": "^10.4.16"
   },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
   },
   "browserslist": {
     "production": [

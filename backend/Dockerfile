@@ -1,4 +1,8 @@
-# Étape 1: Build
+# ==========================================
+# ChatOps Commander Backend - Dockerfile
+# ==========================================
+
+# Stage 1: Builder
 FROM node:18-alpine AS builder
 
 WORKDIR /app
@@ -7,8 +11,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Installer les dépendances
-RUN npm ci
+# Installer toutes les dépendances (dev + prod)
+RUN npm install
 
 # Copier le code source
 COPY src ./src
@@ -16,33 +20,39 @@ COPY src ./src
 # Compiler TypeScript
 RUN npm run build
 
-# Étape 2: Production
+# ==========================================
+# Stage 2: Production
 FROM node:18-alpine
+
+# Installer dumb-init pour gérer les signaux
+RUN apk add --no-cache dumb-init
 
 WORKDIR /app
 
-# Copier uniquement les fichiers nécessaires
+# Copier package.json
 COPY package*.json ./
-RUN npm ci --only=production
 
-# Copier les fichiers compilés
+# Installer SEULEMENT les dépendances de production
+RUN npm install --omit=dev
+
+# Copier le code compilé depuis le builder
 COPY --from=builder /app/dist ./dist
 
-# Créer un utilisateur non-root
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+# Créer le dossier logs
+RUN mkdir -p logs && chown -R node:node /app
 
-# Changer l'ownership
-RUN chown -R nodejs:nodejs /app
-
-USER nodejs
+# Utiliser l'utilisateur non-root
+USER node
 
 # Exposer le port
 EXPOSE 3001
 
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
   CMD node -e "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Démarrer l'application
+# Utiliser dumb-init comme PID 1
+ENTRYPOINT ["dumb-init", "--"]
+
+# Commande de démarrage
 CMD ["node", "dist/server.js"]
