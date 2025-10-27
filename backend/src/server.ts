@@ -24,7 +24,7 @@ import { authenticate } from './middleware/auth';
 // Configuration de l'application
 const app = express();
 const httpServer = createServer(app);
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 
 // Configuration de Socket.IO

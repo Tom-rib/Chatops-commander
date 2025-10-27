@@ -68,9 +68,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
+ #   volumes:
+ #     - ./backend:/app
+ #     - /app/node_modules
     networks:
       - chatops-network
     restart: unless-stopped

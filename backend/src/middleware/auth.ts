@@ -18,7 +18,7 @@ export const generateToken = (userId: number, username: string, email: string, r
   return jwt.sign(
     { id: userId, username, email, role },
     JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' } as jwt.SignOptions
   );
 };
 
