@@ -1,56 +1,48 @@
-# ==========================================
-# STAGE 1: Builder
-# ==========================================
-FROM node:20-alpine AS builder
+# Étape 1: Build
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
+# Copier les fichiers de dépendances
 COPY package*.json ./
+COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Installer les dépendances
+RUN npm ci
 
-# Copy source code
-COPY . .
+# Copier le code source
+COPY src ./src
 
-# Build TypeScript
+# Compiler TypeScript
 RUN npm run build
 
-# ==========================================
-# STAGE 2: Production
-# ==========================================
-FROM node:20-alpine
+# Étape 2: Production
+FROM node:18-alpine
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init openssh-client
+WORKDIR /app
 
-# Create app user
+# Copier uniquement les fichiers nécessaires
+COPY package*.json ./
+RUN npm ci --only=production
+
+# Copier les fichiers compilés
+COPY --from=builder /app/dist ./dist
+
+# Créer un utilisateur non-root
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-WORKDIR /app
+# Changer l'ownership
+RUN chown -R nodejs:nodejs /app
 
-# Copy built application from builder
-COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-COPY --chown=nodejs:nodejs package*.json ./
-
-# Create logs directory
-RUN mkdir -p logs && chown nodejs:nodejs logs
-
-# Switch to non-root user
 USER nodejs
 
-# Expose port
+# Exposer le port
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:3001/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Use dumb-init to handle signals properly
-ENTRYPOINT ["dumb-init", "--"]
-
-# Start application
-CMD ["node", "dist/app.js"]
+# Démarrer l'application
+CMD ["node", "dist/server.js"]

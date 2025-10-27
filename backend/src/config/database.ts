@@ -3,35 +3,43 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Configuration de la connexion PostgreSQL
 const pool = new Pool({
-  host: process.env.DB_HOST || 'postgres',
+  host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.POSTGRES_DB || 'chatops',
-  user: process.env.POSTGRES_USER || 'chatops',
-  password: process.env.POSTGRES_PASSWORD || 'chatops_password_2024',
-  max: 20,
+  database: process.env.DB_NAME || 'chatops_db',
+  user: process.env.DB_USER || 'chatops',
+  password: process.env.DB_PASSWORD || 'chatops_password',
+  max: 20, // Maximum de connexions dans le pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
 });
 
+// Test de connexion
 pool.on('connect', () => {
-  console.log('✅ Connected to PostgreSQL');
+  console.log('✅ Connexion à PostgreSQL établie');
 });
 
 pool.on('error', (err) => {
-  console.error('❌ Unexpected PostgreSQL error:', err);
+  console.error('❌ Erreur PostgreSQL:', err);
   process.exit(-1);
 });
 
-export const initDatabase = async () => {
+// Fonction pour exécuter des requêtes
+export const query = async (text: string, params?: any[]) => {
+  const start = Date.now();
   try {
-    const client = await pool.connect();
-    console.log('✅ Database connection test successful');
-    client.release();
+    const res = await pool.query(text, params);
+    const duration = Date.now() - start;
+    console.log('Requête exécutée', { text, duration, rows: res.rowCount });
+    return res;
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
+    console.error('Erreur lors de la requête:', error);
     throw error;
   }
 };
+
+// Fonction pour obtenir un client du pool
+export const getClient = () => pool.connect();
 
 export default pool;

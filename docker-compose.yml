@@ -3,57 +3,61 @@ version: '3.8'
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:15-alpine
-    container_name: chatops-postgres
-    restart: unless-stopped
+    image: postgres:16-alpine
+    container_name: chatops_postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-chatops}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-chatops_password_2024}
-      POSTGRES_DB: ${POSTGRES_DB:-chatops}
+      POSTGRES_DB: chatops_commander
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - chatops-network
+      - ./backend/src/database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-chatops}"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - chatops_network
 
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: chatops-redis
-    restart: unless-stopped
+    container_name: chatops_redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
-    networks:
-      - chatops-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - chatops_network
 
   # Backend API
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: chatops-backend
-    restart: unless-stopped
+    container_name: chatops_backend
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: ${PORT:-3001}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-chatops}:${POSTGRES_PASSWORD:-chatops_password_2024}@postgres:5432/${POSTGRES_DB:-chatops}
-      REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-your_super_secret_jwt_key_change_this}
+      NODE_ENV: production
+      PORT: 3001
+      FRONTEND_URL: http://localhost:3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: chatops_commander
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-your-32-char-encryption-key-here}
     ports:
       - "3001:3001"
     depends_on:
@@ -61,41 +65,35 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - chatops-network
     volumes:
       - ./backend/logs:/app/logs
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    networks:
+      - chatops_network
+    restart: unless-stopped
 
-  # Frontend
+  # Frontend (React)
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:3001}
-    container_name: chatops-frontend
-    restart: unless-stopped
+    container_name: chatops_frontend
+    environment:
+      REACT_APP_API_URL: http://localhost:3001
+      REACT_APP_WS_URL: ws://localhost:3001
     ports:
       - "3000:80"
     depends_on:
       - backend
     networks:
-      - chatops-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-networks:
-  chatops-network:
-    driver: bridge
+      - chatops_network
+    restart: unless-stopped
 
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
+
+networks:
+  chatops_network:
+    driver: bridge
