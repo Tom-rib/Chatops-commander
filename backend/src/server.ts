@@ -79,7 +79,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.get('/', (req: Request, res: Response) => {
   res.json({
     success: true,
-    message: 'ChatOps Commander API v1.0.0',
+    message: 'AiSystant API v1.0.0',
     endpoints: {
       auth: '/api/auth',
       chat: '/api/chat',

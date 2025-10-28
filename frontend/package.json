@@ -1,7 +1,7 @@
 {
-  "name": "chatops-commander-frontend",
+  "name": "aisystant-frontend",
   "version": "1.0.0",
-  "description": "Interface moderne pour ChatOps Commander - Gestion d'infrastructure avec IA",
+  "description": "Interface moderne pour AiSystant - Gestion d'infrastructure avec IA",
   "type": "module",
   "scripts": {
     "dev": "vite",

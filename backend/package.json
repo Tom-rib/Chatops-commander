@@ -1,7 +1,7 @@
 {
-  "name": "chatops-commander-backend",
+  "name": "aisystant-backend",
   "version": "1.0.0",
-  "description": "Backend API pour ChatOps Commander - Chat intelligent avec IA",
+  "description": "Backend API pour AiSystant - Chat intelligent avec IA",
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
@@ -10,8 +10,8 @@
     "test": "jest",
     "migrate": "ts-node src/config/migrate.ts"
   },
-  "keywords": ["chatops", "ai", "devops", "chat"],
-  "author": "ChatOps Commander Team",
+  "keywords": ["aisystant", "ai", "devops", "chat"],
+  "author": "AiSystant Team",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",

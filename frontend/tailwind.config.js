@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Charte graphique ChatOps Commander
+        // Charte graphique AiSystant
         primary: {
           DEFAULT: '#2F80ED',
           50: '#E3F2FD',

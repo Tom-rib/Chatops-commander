@@ -1,6 +1,6 @@
-# 🚀 Quick Start - ChatOps Commander
+# 🚀 Quick Start - AiSystant
 
-Guide de démarrage rapide pour faire tourner ChatOps Commander en moins de 5 minutes.
+Guide de démarrage rapide pour faire tourner AiSystant en moins de 5 minutes.
 
 ## Prérequis
 
@@ -16,8 +16,8 @@ Avant de commencer, assurez-vous d'avoir :
 ### Étape 1 : Cloner le repository
 
 ```bash
-git clone https://github.com/votre-username/chatops-commander.git
-cd chatops-commander
+git clone https://github.com/votre-username/aisystant.git
+cd aisystant
 ```
 
 ### Étape 2 : Configuration de l'environnement

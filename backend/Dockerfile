@@ -1,5 +1,5 @@
 # ==========================================
-# ChatOps Commander Backend - Dockerfile
+# AiSystant Backend - Dockerfile
 # ==========================================
 
 # Stage 1: Builder

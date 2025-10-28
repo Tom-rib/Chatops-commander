@@ -1,6 +1,6 @@
-# ChatOps Commander - Backend
+# AiSystant - Backend
 
-Backend API pour ChatOps Commander, un assistant IA intelligent pour DevOps.
+Backend API pour AiSystant, un assistant IA intelligent pour DevOps.
 
 ## 🚀 Technologies
 
@@ -39,9 +39,9 @@ cp .env.example .env
 ```bash
 # Avec psql
 psql -U postgres
-CREATE DATABASE chatops_db;
-CREATE USER chatops WITH PASSWORD 'chatops_password';
-GRANT ALL PRIVILEGES ON DATABASE chatops_db TO chatops;
+CREATE DATABASE aisystant_db;
+CREATE USER aisystant WITH PASSWORD 'aisystant_password';
+GRANT ALL PRIVILEGES ON DATABASE aisystant_db TO aisystant;
 \q
 ```
 

@@ -1,8 +1,8 @@
-# 🤖 ChatOps Commander
+# 🤖 AiSystant
 
 <div align="center">
 
-![ChatOps Commander Logo](https://via.placeholder.com/200x200/00D9FF/0A0E1A?text=ChatOps+Commander)
+![AiSystant Logo](https://via.placeholder.com/200x200/00D9FF/0A0E1A?text=AiSystant)
 
 **Parlez à votre infrastructure en langage naturel**
 
@@ -21,7 +21,7 @@
 
 ## 📖 À Propos
 
-**ChatOps Commander** est une plateforme moderne de gestion d'infrastructure qui utilise l'**IA générative** pour transformer le langage naturel en commandes système. Dites simplement "redémarre nginx sur web-01" et laissez l'IA faire le reste !
+**AiSystant** est une plateforme moderne de gestion d'infrastructure qui utilise l'**IA générative** pour transformer le langage naturel en commandes système. Dites simplement "redémarre nginx sur web-01" et laissez l'IA faire le reste !
 
 ### ✨ Fonctionnalités Principales
 

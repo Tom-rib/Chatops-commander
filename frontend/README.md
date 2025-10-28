@@ -1,4 +1,4 @@
-# 🚀 ChatOps Commander - Frontend
+# 🚀 AiSystant - Frontend
 
 Interface moderne et réactive pour la gestion d'infrastructure via chat avec l'aide de l'IA.
 
