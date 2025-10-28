@@ -41,7 +41,7 @@ export class ClaudeService {
       });
 
       // Définir le prompt système par défaut
-      const defaultSystemPrompt = `Tu es ChatOps Commander, un assistant IA expert en DevOps, développement et administration système.
+      const defaultSystemPrompt = `Tu es AiSystant, un assistant IA expert en DevOps, développement et administration système.
 Tu peux aider les utilisateurs avec:
 - Le développement de code (Python, JavaScript, TypeScript, etc.)
 - L'administration système et les commandes Linux/Unix

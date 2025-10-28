@@ -3,7 +3,6 @@ import { Send, Loader, Plus, Trash2, MessageSquare, Bot } from 'lucide-react'
 import ChatMessage from '../components/ChatMessage'
 import { chatAPI } from '../services/api'
 import { socketService } from '../services/socket'
-import { useAuth } from '../context/AuthContext'
 
 interface Message {
   id: string
@@ -19,7 +18,7 @@ interface Conversation {
 }
 
 export default function Chat() {
-  const { user } = useAuth()
+//    const { user } = useAuth()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversation, setCurrentConversation] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])

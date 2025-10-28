@@ -38,7 +38,7 @@ export default function Login() {
             </div>
           </div>
           <h2 className="text-3xl font-bold text-text">
-            Bienvenue sur ChatOps Commander
+            Bienvenue sur AiSystant
           </h2>
           <p className="mt-2 text-text-light">
             Connectez-vous pour gérer votre infrastructure

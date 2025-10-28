@@ -83,7 +83,7 @@ export default function Register() {
             Créer un compte
           </h2>
           <p className="mt-2 text-text-light">
-            Rejoignez ChatOps Commander aujourd'hui
+            Rejoignez AiSystant aujourd'hui
           </p>
         </div>
 

@@ -68,9 +68,20 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
- #   volumes:
- #     - ./backend:/app
- #     - /app/node_modules
+    networks:
+      - chatops-network
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: chatops-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
     networks:
       - chatops-network
     restart: unless-stopped

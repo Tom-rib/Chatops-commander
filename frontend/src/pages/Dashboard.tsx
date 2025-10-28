@@ -6,7 +6,6 @@ import {
   Terminal, 
   Server, 
   Activity,
-  TrendingUp,
   Clock,
   CheckCircle2,
   AlertCircle

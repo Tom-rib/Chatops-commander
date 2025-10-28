@@ -42,7 +42,7 @@ export default function Navbar() {
                 <Terminal className="w-6 h-6 text-white" />
               </div>
               <span className="text-xl font-bold text-text hidden sm:block">
-                ChatOps Commander
+                AiSystant
               </span>
             </Link>
           </div>
