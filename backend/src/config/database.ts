@@ -7,9 +7,9 @@ dotenv.config();
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'chatops_db',
-  user: process.env.DB_USER || 'chatops',
-  password: process.env.DB_PASSWORD || 'chatops_password',
+  database: process.env.DB_NAME || 'aisystant_db',
+  user: process.env.DB_USER || 'aisystant',
+  password: process.env.DB_PASSWORD || 'aisystant_password',
   max: 20, // Maximum de connexions dans le pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,

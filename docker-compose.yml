@@ -4,17 +4,17 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: chatops-postgres
+    container_name: aisystant-postgres
     environment:
-      POSTGRES_DB: chatops_db
-      POSTGRES_USER: chatops
-      POSTGRES_PASSWORD: chatops_password
+      POSTGRES_DB: aisystant_db
+      POSTGRES_USER: aisystant
+      POSTGRES_PASSWORD: aisystant_password
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U chatops"]
+      test: ["CMD-SHELL", "pg_isready -U aisystant"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,7 +25,7 @@ services:
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: chatops-redis
+    container_name: aisystant-redis
     ports:
       - "6379:6379"
     volumes:
@@ -45,16 +45,16 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: chatops-backend
+    container_name: aisystant-backend
     environment:
       NODE_ENV: production
       PORT: 3001
       HOST: 0.0.0.0
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_NAME: chatops_db
-      DB_USER: chatops
-      DB_PASSWORD: chatops_password
+      DB_NAME: aisystant_db
+      DB_USER: aisystant
+      DB_PASSWORD: aisystant_password
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-votre_secret_jwt_tres_securise}
       JWT_EXPIRES_IN: 7d
@@ -77,7 +77,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: chatops-frontend
+    container_name: aisystant-frontend
     ports:
       - "3000:80"
     depends_on:
@@ -93,5 +93,5 @@ volumes:
     driver: local
 
 networks:
-  chatops-network:
+  aisystant-network:
     driver: bridge
