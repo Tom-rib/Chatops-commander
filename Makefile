@@ -1,11 +1,11 @@
-# ChatOps Commander - Makefile
+# AiSystant - Makefile
 # Commandes pratiques pour le développement et le déploiement
 
 .PHONY: help install dev build start stop restart logs clean test
 
 # Affiche l'aide
 help:
-	@echo "ChatOps Commander - Commandes disponibles:"
+	@echo "AiSystant - Commandes disponibles:"
 	@echo ""
 	@echo "  make install      - Installer toutes les dépendances"
 	@echo "  make dev          - Lancer en mode développement"
@@ -55,7 +55,7 @@ build:
 
 # Démarrer avec Docker
 start:
-	@echo "🚀 Démarrage de ChatOps Commander..."
+	@echo "🚀 Démarrage de AiSystant..."
 	docker-compose up -d
 	@echo "✅ Services démarrés"
 	@echo ""
@@ -148,7 +148,7 @@ prod-start:
 # Backup
 backup:
 	@echo "💾 Backup de la base de données..."
-	docker exec chatops-db pg_dump -U chatops chatops > backup_$(shell date +%Y%m%d_%H%M%S).sql
+	docker exec aisystant-db pg_dump -U aisystant aisystant > backup_$(shell date +%Y%m%d_%H%M%S).sql
 	@echo "✅ Backup créé"
 
 # Monitoring
@@ -159,17 +159,17 @@ health:
 
 # Stats Docker
 stats:
-	docker stats chatops-backend chatops-frontend chatops-db chatops-redis
+	docker stats aisystant-backend aisystant-frontend aisystant-db aisystant-redis
 
 # Shell dans les containers
 shell-backend:
-	docker exec -it chatops-backend sh
+	docker exec -it aisystant-backend sh
 
 shell-frontend:
-	docker exec -it chatops-frontend sh
+	docker exec -it aisystant-frontend sh
 
 shell-db:
-	docker exec -it chatops-db psql -U chatops
+	docker exec -it aisystant-db psql -U aisystant
 
 shell-redis:
-	docker exec -it chatops-redis redis-cli
+	docker exec -it aisystant-redis redis-cli

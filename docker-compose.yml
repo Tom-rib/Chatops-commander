@@ -19,7 +19,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - chatops-network
+      - aisystant-network
     restart: unless-stopped
 
   # Redis Cache
@@ -37,7 +37,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - chatops-network
+      - aisystant-network
     restart: unless-stopped
 
   # Backend API
@@ -69,7 +69,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - chatops-network
+      - aisystant-network
     restart: unless-stopped
 
   # Frontend
@@ -83,7 +83,7 @@ services:
     depends_on:
       - backend
     networks:
-      - chatops-network
+      - aisystant-network
     restart: unless-stopped
 
 volumes:

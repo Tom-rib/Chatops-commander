@@ -123,7 +123,7 @@ export default function Login() {
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
               <p className="font-medium text-blue-900 mb-2">🎯 Compte de démonstration</p>
               <p className="text-blue-800">
-                <span className="font-mono">Email:</span> demo@chatops.com<br />
+                <span className="font-mono">Email:</span> demo@aisystant.com<br />
                 <span className="font-mono">Password:</span> demo123
               </p>
             </div>

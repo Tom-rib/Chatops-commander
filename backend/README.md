@@ -70,7 +70,7 @@ PORT=3001
 NODE_ENV=development
 
 # Base de données
-DATABASE_URL=postgresql://chatops:chatops_password@localhost:5432/chatops_db
+DATABASE_URL=postgresql://aisystant:aisystant_password@localhost:5432/aisystant_db
 
 # Redis
 REDIS_URL=redis://localhost:6379

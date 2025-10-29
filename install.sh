@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# ChatOps Commander - Installation Automatique COMPLÈTE
+# AiSystant - Installation Automatique COMPLÈTE
 # Ce script installe TOUT : dossiers, dépendances, et gère les conflits
 
 set -e
 
-echo "🚀 ChatOps Commander - Installation Automatique Complète"
+echo "🚀 AiSystant - Installation Automatique Complète"
 echo "=========================================================="
 echo ""
 
@@ -101,10 +101,10 @@ fi
 
 cat > .env << 'EOF'
 # Database
-POSTGRES_USER=chatops
-POSTGRES_PASSWORD=chatops_password_2024
-POSTGRES_DB=chatops
-DATABASE_URL=postgresql://chatops:chatops_password_2024@postgres:5432/chatops
+POSTGRES_USER=aisystant
+POSTGRES_PASSWORD=aisystant_password
+POSTGRES_DB=aisystant
+DATABASE_URL=postgresql://aisystant:aisystant_password@postgres:5432/aisystant
 
 # Redis
 REDIS_URL=redis://redis:6379
@@ -258,7 +258,7 @@ echo "   Frontend : http://localhost:3000"
 echo "   Backend  : http://localhost:3001"
 echo ""
 echo "   Compte par défaut :"
-echo "   Email    : admin@chatops.local"
+echo "   Email    : admin@aisystant.com"
 echo "   Password : admin123"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -272,5 +272,5 @@ echo "   Fix TypeScript   : FIX_TYPESCRIPT.md"
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo -e "${GREEN}✨ Bonne utilisation de ChatOps Commander !${NC}"
+echo -e "${GREEN}✨ Bonne utilisation de AiSystant !${NC}"
 echo ""

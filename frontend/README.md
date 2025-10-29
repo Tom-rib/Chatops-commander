@@ -96,7 +96,7 @@ Vous devez créer ces fichiers dans `public/`:
 
 **Méthode recommandée**: Utiliser DALL-E ou Midjourney avec ce prompt:
 ```
-"Modern minimalist logo for ChatOps Commander, 
+"Modern minimalist logo for AiSystant, 
 blue (#2F80ED) and green (#27AE60) colors, 
 tech/devops theme, clean design, flat style"
 ```
@@ -105,8 +105,8 @@ tech/devops theme, clean design, flat style"
 
 ```json
 {
-  "name": "ChatOps Commander",
-  "short_name": "ChatOps",
+  "name": "AiSystant",
+  "short_name": "AiSystant",
   "description": "Gestion d'infrastructure avec IA",
   "start_url": "/",
   "display": "standalone",
@@ -156,13 +156,13 @@ npm run preview
 ### Build de l'image
 
 ```bash
-docker build -t chatops-commander-frontend .
+docker build -t aisystant-frontend .
 ```
 
 ### Lancement
 
 ```bash
-docker run -p 80:80 chatops-commander-frontend
+docker run -p 80:80 aisystant-frontend
 ```
 
 ## 🔧 Scripts disponibles
@@ -182,7 +182,7 @@ docker run -p 80:80 chatops-commander-frontend
 |----------|-------------|------------|
 | `VITE_API_URL` | URL de l'API backend | `http://localhost:3001` |
 | `VITE_WS_URL` | URL WebSocket | `ws://localhost:3001` |
-| `VITE_APP_NAME` | Nom de l'application | `ChatOps Commander` |
+| `VITE_APP_NAME` | Nom de l'application | `AiSystant` |
 | `VITE_APP_VERSION` | Version | `1.0.0` |
 
 ## 📱 Pages
@@ -289,4 +289,4 @@ MIT
 
 ---
 
-**Créé avec ❤️ pour ChatOps Commander**
+**Créé avec ❤️ pour AiSystant**
