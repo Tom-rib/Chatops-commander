@@ -1,0 +1,41 @@
+{
+  "name": "AiSystant",
+  "short_name": "AiSystant",
+  "description": "Gestion d'infrastructure avec IA via interface chat",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F2FFF2",
+  "theme_color": "#2F80ED",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities", "developer tools"],
+  "shortcuts": [
+    {
+      "name": "Chat",
+      "short_name": "Chat",
+      "description": "Ouvrir le chat avec l'IA",
+      "url": "/chat",
+      "icons": [{ "src": "/logo-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "SSH",
+      "short_name": "SSH",
+      "description": "Gérer les connexions SSH",
+      "url": "/ssh",
+      "icons": [{ "src": "/logo-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
