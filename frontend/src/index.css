@@ -109,7 +109,7 @@
 
   /* Loading */
   .loading {
-    @apply inline-block w-5 h-5 border-3 border-primary 
+    @apply inline-block w-5 h-5 border-[3px] border-primary 
            border-t-transparent rounded-full animate-spin;
   }
 
