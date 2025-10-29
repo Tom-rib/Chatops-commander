@@ -137,8 +137,8 @@ sudo systemctl start redis  # Linux
 ### Étape 3 : Créer la base de données
 
 ```bash
-createdb chatops
-psql chatops < backend/init.sql
+createdb aisystant
+psql aisystant < backend/init.sql
 ```
 
 ### Étape 4 : Installer les dépendances
@@ -293,8 +293,8 @@ SENTRY_DSN=https://votre-dsn@sentry.io/projet
 ## Support
 
 - 📖 Documentation : [README.md](README.md)
-- 🐛 Bug reports : [GitHub Issues](https://github.com/votre-username/chatops-commander/issues)
-- 💬 Questions : [Discord](https://discord.gg/chatops)
+- 🐛 Bug reports : [GitHub Issues](https://github.com/votre-username/aisystant/issues)
+- 💬 Questions : [Discord](https://discord.gg/aisystant)
 
 ---
 
@@ -305,4 +305,4 @@ SENTRY_DSN=https://votre-dsn@sentry.io/projet
 
 ---
 
-**Bon démarrage avec ChatOps Commander ! 🚀**
+**Bon démarrage avec AiSystant ! 🚀**

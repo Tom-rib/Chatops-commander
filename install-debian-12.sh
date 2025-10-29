@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# ChatOps Commander - Installation Complète pour Debian 12
+# AiSystant - Installation Complète pour Debian 12
 # Ce script installe TOUT ce dont vous avez besoin
 
 set -e
 
-echo "🚀 ChatOps Commander - Installation sur Debian 12"
+echo "🚀 AiSystant - Installation sur Debian 12"
 echo "=================================================="
 echo ""
 
@@ -187,8 +187,8 @@ echo "1. Redémarrer la session (exit puis reconnexion)"
 echo ""
 echo "2. Cloner le projet :"
 echo "   cd ~/projets"
-echo "   git clone https://github.com/VOTRE-NOM/chatops-commander.git"
-echo "   cd chatops-commander"
+echo "   git clone https://github.com/VOTRE-NOM/aisystant.git"
+echo "   cd aisystant"
 echo ""
 echo "3. Configurer l'environnement :"
 echo "   cp .env.example .env"

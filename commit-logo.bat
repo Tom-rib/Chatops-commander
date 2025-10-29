@@ -1,5 +1,5 @@
 @echo off
-cd /d "C:\Users\Tom\Documents\Github\Chatops-commander"
+cd /d "C:\Users\Tom\Documents\Github\aisystant"
 
 echo Checking git status...
 git status

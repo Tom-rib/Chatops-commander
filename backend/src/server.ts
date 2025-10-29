@@ -188,7 +188,7 @@ const startServer = async () => {
     // Démarrage du serveur HTTP
     httpServer.listen(PORT, HOST, () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('🚀 ChatOps Commander Backend démarré !');
+      console.log('🚀 AiSystant Backend démarré !');
       console.log(`📡 API: http://${HOST}:${PORT}`);
       console.log(`🔌 WebSocket: ws://${HOST}:${PORT}`);
       console.log(`🌍 Environnement: ${process.env.NODE_ENV || 'development'}`);
