@@ -10,6 +10,7 @@ import {
   X
 } from 'lucide-react'
 import { useState } from 'react'
+import logo from '../../public/logo-192.png'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
@@ -39,7 +40,7 @@ export default function Navbar() {
           <div className="flex items-center">
             <Link to="/dashboard" className="flex items-center space-x-3 group">
               <img 
-                src="/logo-192.png" 
+                src={logo} 
                 alt="AiSystant Logo" 
                 className="h-10 w-10 object-contain group-hover:scale-110 transition-transform"
               />

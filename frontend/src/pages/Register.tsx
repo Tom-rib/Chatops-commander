@@ -1,7 +1,8 @@
 import { useState, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Terminal, Mail, Lock, User, AlertCircle, Loader, CheckCircle2 } from 'lucide-react'
+import { Mail, Lock, User, AlertCircle, Loader, CheckCircle2 } from 'lucide-react'
+import logo from '../../public/logo-192.png'
 
 export default function Register() {
   const [username, setUsername] = useState('')
@@ -75,9 +76,11 @@ export default function Register() {
         {/* Header */}
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-lg">
-              <Terminal className="w-10 h-10 text-white" />
-            </div>
+            <img 
+              src={logo} 
+              alt="AiSystant Logo" 
+              className="h-16 w-16 object-contain"
+            />
           </div>
           <h2 className="text-3xl font-bold text-text">
             Créer un compte

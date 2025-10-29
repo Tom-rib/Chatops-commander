@@ -1,7 +1,8 @@
 import { useState, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Terminal, Mail, Lock, AlertCircle, Loader } from 'lucide-react'
+import { Mail, Lock, AlertCircle, Loader } from 'lucide-react'
+import logo from '../../public/logo-192.png'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -34,7 +35,7 @@ export default function Login() {
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <img 
-              src="/logo-192.png" 
+              src={logo} 
               alt="AiSystant Logo" 
               className="h-16 w-16 object-contain"
             />
