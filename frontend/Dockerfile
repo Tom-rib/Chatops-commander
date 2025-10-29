@@ -1,35 +1,34 @@
 # Build stage
 FROM node:18-alpine AS builder
 
+# Installer les dépendances nécessaires pour les modules natifs
+RUN apk add --no-cache python3 make g++
+
 WORKDIR /app
 
-# Copy package files
+# Copier les fichiers de dépendances
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Installer TOUTES les dépendances (dev incluses) pour le build
+RUN npm install
 
-# Copy source code
+# Copier le reste des fichiers
 COPY . .
 
-# Build application
+# Build de l'application
 RUN npm run build
 
 # Production stage
 FROM nginx:alpine
 
-# Copy built assets
+# Copier la config nginx personnalisée si nécessaire
+COPY nginx.conf /etc/nginx/conf.d/default.conf 2>/dev/null || true
+
+# Copier les fichiers buildés
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port
+# Exposer le port
 EXPOSE 80
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost/health || exit 1
-
-# Start nginx
+# Démarrer nginx
 CMD ["nginx", "-g", "daemon off;"]

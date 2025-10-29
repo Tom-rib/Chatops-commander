@@ -33,9 +33,11 @@ export default function Login() {
         {/* Header */}
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center shadow-lg">
-              <Terminal className="w-10 h-10 text-white" />
-            </div>
+            <img 
+              src="/logo-192.png" 
+              alt="AiSystant Logo" 
+              className="h-16 w-16 object-contain"
+            />
           </div>
           <h2 className="text-3xl font-bold text-text">
             Bienvenue sur AiSystant

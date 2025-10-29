@@ -38,9 +38,11 @@ export default function Navbar() {
           {/* Logo & Brand */}
           <div className="flex items-center">
             <Link to="/dashboard" className="flex items-center space-x-3 group">
-              <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Terminal className="w-6 h-6 text-white" />
-              </div>
+              <img 
+                src="/logo-192.png" 
+                alt="AiSystant Logo" 
+                className="h-10 w-10 object-contain group-hover:scale-110 transition-transform"
+              />
               <span className="text-xl font-bold text-text hidden sm:block">
                 AiSystant
               </span>
