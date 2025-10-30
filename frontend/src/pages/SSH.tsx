@@ -14,12 +14,13 @@ import { sshAPI } from '../services/api'
 import { socketService } from '../services/socket'
 
 interface SSHServer {
-  id: string
+  id: number
   name: string
   host: string
   port: number
   username: string
-  status: 'connected' | 'disconnected' | 'connecting'
+  connected?: boolean
+  status?: 'connected' | 'disconnected' | 'connecting'
 }
 
 interface TerminalLine {
@@ -31,7 +32,7 @@ interface TerminalLine {
 
 export default function SSH() {
   const [servers, setServers] = useState<SSHServer[]>([])
-  const [selectedServer, setSelectedServer] = useState<string | null>(null)
+  const [selectedServer, setSelectedServer] = useState<number | null>(null)
   const [isAddingServer, setIsAddingServer] = useState(false)
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([])
   const [command, setCommand] = useState('')
@@ -90,7 +91,15 @@ export default function SSH() {
   const loadServers = async () => {
     try {
       const response = await sshAPI.getServers()
-      setServers(response.data.servers || [])
+      const serversData = response.data.data || response.data.servers || response.data || []
+      
+      // Mapper les serveurs avec un statut par défaut
+      const mappedServers = serversData.map((server: any) => ({
+        ...server,
+        status: server.connected ? 'connected' : 'disconnected'
+      }))
+      
+      setServers(mappedServers)
     } catch (error) {
       console.error('Erreur lors du chargement des serveurs:', error)
     }
@@ -99,15 +108,24 @@ export default function SSH() {
   const addServer = async () => {
     try {
       const response = await sshAPI.addServer(newServer)
-      setServers(prev => [...prev, response.data.server])
+      const newServerData = response.data.data || response.data.server || response.data
+      
+      // Ajouter le statut par défaut
+      const serverWithStatus = {
+        ...newServerData,
+        status: 'disconnected' as const
+      }
+      
+      setServers(prev => [...prev, serverWithStatus])
       setIsAddingServer(false)
       setNewServer({ name: '', host: '', port: 22, username: '', password: '' })
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de l\'ajout du serveur:', error)
+      alert(`Erreur: ${error.response?.data?.message || error.message}`)
     }
   }
 
-  const deleteServer = async (serverId: string) => {
+  const deleteServer = async (serverId: number) => {
     if (!confirm('Voulez-vous vraiment supprimer ce serveur ?')) return
 
     try {
@@ -122,7 +140,7 @@ export default function SSH() {
     }
   }
 
-  const connectToServer = async (serverId: string) => {
+  const connectToServer = async (serverId: number) => {
     try {
       updateServerStatus(serverId, 'connecting')
       await sshAPI.connect(serverId)
@@ -142,7 +160,7 @@ export default function SSH() {
     setIsExecuting(true)
 
     try {
-      socketService.executeSSHCommand(selectedServer, command)
+      socketService.executeSSHCommand(selectedServer.toString(), command)
       setCommand('')
     } catch (error) {
       console.error('Erreur lors de l\'exécution:', error)
@@ -162,7 +180,7 @@ export default function SSH() {
     setTerminalLines(prev => [...prev, newLine])
   }
 
-  const updateServerStatus = (serverId: string, status: SSHServer['status']) => {
+  const updateServerStatus = (serverId: number, status: NonNullable<SSHServer['status']>) => {
     setServers(prev =>
       prev.map(s => (s.id === serverId ? { ...s, status } : s))
     )
@@ -214,7 +232,7 @@ export default function SSH() {
                         : 'hover:bg-gray-50 border-2 border-transparent'
                     }`}
                     onClick={() => {
-                      if (server.status === 'disconnected') {
+                      if (server.status === 'disconnected' || !server.status) {
                         connectToServer(server.id)
                       } else {
                         setSelectedServer(server.id)
@@ -255,7 +273,7 @@ export default function SSH() {
                           <span className="text-xs text-yellow-600 font-medium">Connexion...</span>
                         </>
                       )}
-                      {server.status === 'disconnected' && (
+                      {(!server.status || server.status === 'disconnected') && (
                         <>
                           <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
                           <span className="text-xs text-gray-600 font-medium">Déconnecté</span>
