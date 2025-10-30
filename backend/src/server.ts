@@ -31,7 +31,14 @@ const HOST = process.env.HOST || '0.0.0.0';
 // Configuration de Socket.IO
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173', // ✅ Changé pour Vite
+    origin: (origin, callback) => {
+      const allowedOrigins = ['http://localhost:5173', 'http://192.168.136.149:5173'];
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: ['GET', 'POST'],
     credentials: true
   },
