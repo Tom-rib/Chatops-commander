@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react'
 import { Send, Loader, Plus, Trash2, MessageSquare, Bot } from 'lucide-react'
 import ChatMessage from '../components/ChatMessage'
@@ -219,7 +220,6 @@ export default function Chat() {
       <div className="h-[calc(100vh-4rem)] flex">
         {/* Sidebar - Liste des conversations */}
         <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-          {/* Header */}
           <div className="p-4 border-b border-gray-200">
             <button
               onClick={createNewConversation}
@@ -230,7 +230,6 @@ export default function Chat() {
             </button>
           </div>
 
-          {/* Liste des conversations */}
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             {conversations.length === 0 ? (
               <div className="p-8 text-center">
@@ -258,12 +257,12 @@ export default function Chat() {
                           {conv.title}
                         </p>
                         <p className="text-xs text-text-light mt-1">
-                          {new Date(conv.created_at).toLocaleDateString('fr-FR', {
+                          {new Date(conv.created_at).toLocaleString('fr-FR', {
                             day: 'numeric',
                             month: 'short',
                             hour: '2-digit',
-                            minute: '2-digit'
-                            timeZone: 'Europe/Paris'
+                            minute: '2-digit',
+                            timeZone: 'Europe/Paris',
                           })}
                         </p>
                       </div>
@@ -288,7 +287,6 @@ export default function Chat() {
         <div className="flex-1 flex flex-col">
           {currentConversationId ? (
             <>
-              {/* Messages */}
               <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
@@ -355,7 +353,6 @@ export default function Chat() {
                 )}
               </div>
 
-              {/* Zone de saisie */}
               <div className="border-t border-gray-200 p-4 bg-white">
                 <div className="max-w-4xl mx-auto">
                   <div className="flex items-end space-x-4">
