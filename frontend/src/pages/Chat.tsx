@@ -5,21 +5,27 @@ import { chatAPI } from '../services/api'
 import { socketService } from '../services/socket'
 
 interface Message {
-  id: string
+  id: number
   content: string
   role: 'user' | 'assistant' | 'system'
-  timestamp: Date | string
+  created_at: string
+  conversation_id?: number
+  user_id?: number
 }
 
 interface Conversation {
-  id: string
+  id: number
   title: string
-  createdAt: string
+  created_at: string
+  updated_at: string
+  user_id: number
+  message_count?: number
+  last_message_at?: string
 }
 
 export default function Chat() {
   const [conversations, setConversations] = useState<Conversation[]>([])
-  const [currentConversation, setCurrentConversation] = useState<string | null>(null)
+  const [currentConversation, setCurrentConversation] = useState<number | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -42,7 +48,8 @@ export default function Chat() {
     }
 
     return () => {
-      socketService.disconnect()
+      // Ne pas déconnecter pour garder la connexion
+      // socketService.disconnect()
     }
   }, [])
 
@@ -58,25 +65,32 @@ export default function Chat() {
   const loadConversations = async () => {
     try {
       const response = await chatAPI.getConversations()
-      setConversations(response.data.conversations || [])
+      const convs = response.data.data || response.data.conversations || []
+      setConversations(convs)
       
-      // Sélectionner la première conversation par défaut
-      if (response.data.conversations?.length > 0 && !currentConversation) {
-        loadMessages(response.data.conversations[0].id)
+      // Sélectionner la première conversation par défaut si aucune n'est sélectionnée
+      if (convs.length > 0 && !currentConversation) {
+        loadMessages(convs[0].id)
       }
     } catch (error) {
       console.error('Erreur lors du chargement des conversations:', error)
     }
   }
 
-  const loadMessages = async (conversationId: string) => {
+  const loadMessages = async (conversationId: number) => {
     setIsLoading(true)
+    setCurrentConversation(conversationId)
+    
     try {
-      const response = await chatAPI.getMessages(conversationId)
-      setMessages(response.data.messages || [])
-      setCurrentConversation(conversationId)
+      const response = await chatAPI.getConversation(conversationId)
+      const data = response.data.data
+      
+      // Les messages peuvent être dans data.messages ou data.conversation.messages
+      const msgs = data.messages || data.conversation?.messages || []
+      setMessages(msgs)
     } catch (error) {
       console.error('Erreur lors du chargement des messages:', error)
+      setMessages([])
     } finally {
       setIsLoading(false)
     }
@@ -85,22 +99,19 @@ export default function Chat() {
   const createNewConversation = async () => {
     try {
       const response = await chatAPI.createConversation('Nouvelle conversation')
-       const newConv = response.data.data
+      const newConv = response.data.data
       
-      // Vérifier que la conversation a bien été créée
       if (newConv?.id) {
         setConversations(prev => [newConv, ...prev])
         setCurrentConversation(newConv.id)
         setMessages([])
-      } else {
-        console.error('Conversation créée mais sans ID:', response.data)
       }
     } catch (error) {
       console.error('Erreur lors de la création de la conversation:', error)
     }
   }
 
-  const deleteConversation = async (conversationId: string) => {
+  const deleteConversation = async (conversationId: number) => {
     if (!confirm('Voulez-vous vraiment supprimer cette conversation ?')) return
 
     try {
@@ -110,6 +121,12 @@ export default function Chat() {
       if (currentConversation === conversationId) {
         setCurrentConversation(null)
         setMessages([])
+        
+        // Sélectionner la première conversation restante
+        const remaining = conversations.filter(c => c.id !== conversationId)
+        if (remaining.length > 0) {
+          loadMessages(remaining[0].id)
+        }
       }
     } catch (error) {
       console.error('Erreur lors de la suppression:', error)
@@ -119,30 +136,49 @@ export default function Chat() {
   const sendMessage = async () => {
     if (!inputMessage.trim() || !currentConversation || isSending) return
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: inputMessage,
-      role: 'user',
-      timestamp: new Date(),
-    }
-
-    setMessages(prev => [...prev, userMessage])
+    const messageContent = inputMessage.trim()
     setInputMessage('')
     setIsSending(true)
 
+    // Ajouter immédiatement le message utilisateur à l'affichage
+    const tempUserMessage: Message = {
+      id: Date.now(),
+      content: messageContent,
+      role: 'user',
+      created_at: new Date().toISOString(),
+      conversation_id: currentConversation,
+    }
+    setMessages(prev => [...prev, tempUserMessage])
+
     try {
-      const response = await chatAPI.sendMessage(currentConversation, inputMessage)
+      const response = await chatAPI.sendMessage(currentConversation, messageContent)
+      const data = response.data.data
       
-      if (response.data.message) {
-        setMessages(prev => [...prev, response.data.message])
+      // Remplacer le message temporaire par le vrai message utilisateur
+      // et ajouter la réponse de l'assistant
+      if (data.userMessage && data.assistantMessage) {
+        setMessages(prev => {
+          // Retirer le message temporaire
+          const withoutTemp = prev.filter(m => m.id !== tempUserMessage.id)
+          // Ajouter les vrais messages
+          return [...withoutTemp, data.userMessage, data.assistantMessage]
+        })
+        
+        // Recharger la liste des conversations pour mettre à jour les titres
+        loadConversations()
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur lors de l\'envoi du message:', error)
+      
+      // Retirer le message temporaire
+      setMessages(prev => prev.filter(m => m.id !== tempUserMessage.id))
+      
+      // Afficher un message d'erreur
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: 'Désolé, une erreur est survenue. Veuillez réessayer.',
+        id: Date.now() + 1,
+        content: `Erreur: ${error.response?.data?.message || error.message || 'Une erreur est survenue'}`,
         role: 'system',
-        timestamp: new Date(),
+        created_at: new Date().toISOString(),
       }
       setMessages(prev => [...prev, errorMessage])
     } finally {
@@ -185,7 +221,7 @@ export default function Chat() {
               </div>
             ) : (
               <div className="p-2 space-y-2">
-                {conversations.filter(Boolean).map((conv) => (
+                {conversations.map((conv) => (
                   <div
                     key={conv.id}
                     className={`group p-3 rounded-lg cursor-pointer transition-all ${
@@ -201,7 +237,12 @@ export default function Chat() {
                           {conv.title}
                         </p>
                         <p className="text-xs text-text-light mt-1">
-                          {new Date(conv.createdAt).toLocaleDateString('fr-FR')}
+                          {new Date(conv.created_at).toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
                         </p>
                       </div>
                       <button
@@ -264,10 +305,29 @@ export default function Chat() {
                     </div>
                   </div>
                 ) : (
-                  <div>
+                  <div className="space-y-4">
                     {messages.map((message) => (
-                      <ChatMessage key={message.id} message={message} />
+                      <ChatMessage 
+                        key={message.id} 
+                        message={{
+                          ...message,
+                          timestamp: message.created_at
+                        }} 
+                      />
                     ))}
+                    {isSending && (
+                      <div className="flex items-start space-x-3">
+                        <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Bot className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1 bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                          <div className="flex items-center space-x-2">
+                            <Loader className="w-4 h-4 animate-spin text-primary" />
+                            <span className="text-text-light text-sm">Claude réfléchit...</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     <div ref={messagesEndRef} />
                   </div>
                 )}
