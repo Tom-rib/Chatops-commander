@@ -8,10 +8,12 @@ import {
   X,
   AlertCircle,
   CheckCircle2,
-  Loader
+  Loader,
+  RotateCcw
 } from 'lucide-react'
 import { sshAPI } from '../services/api'
 import { socketService } from '../services/socket'
+import { useSSH } from '../context/SSHContext'
 
 interface SSHServer {
   id: number
@@ -23,21 +25,23 @@ interface SSHServer {
   status?: 'connected' | 'disconnected' | 'connecting'
 }
 
-interface TerminalLine {
-  id: string
-  content: string
-  type: 'command' | 'output' | 'error'
-  timestamp: Date
-}
-
 export default function SSH() {
   const [servers, setServers] = useState<SSHServer[]>([])
-  const [selectedServer, setSelectedServer] = useState<number | null>(null)
   const [isAddingServer, setIsAddingServer] = useState(false)
-  const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([])
   const [command, setCommand] = useState('')
   const [isExecuting, setIsExecuting] = useState(false)
   const terminalEndRef = useRef<HTMLDivElement>(null)
+
+  // Utiliser le contexte SSH au lieu du state local
+  const { 
+    selectedServer,
+    setSelectedServerId,
+    addTerminalLine,
+    clearTerminal,
+    getTerminalLines 
+  } = useSSH()
+
+  const terminalLines = selectedServer ? getTerminalLines(selectedServer) : []
 
   // Formulaire nouveau serveur
   const [newServer, setNewServer] = useState({
@@ -57,26 +61,31 @@ export default function SSH() {
       socketService.connect(token)
       
       socketService.onSSHOutput((data) => {
-        addTerminalLine(data.output, 'output')
+        const serverId = parseInt(data.serverId)
+        addTerminalLine(serverId, data.output, 'output')
       })
       
       socketService.onSSHError((data) => {
-        addTerminalLine(data.error, 'error')
+        const serverId = parseInt(data.serverId)
+        addTerminalLine(serverId, data.error, 'error')
       })
       
       socketService.onSSHConnected((data) => {
-        updateServerStatus(data.serverId, 'connected')
-        addTerminalLine(`✓ Connecté au serveur ${data.serverId}`, 'output')
+        const serverId = parseInt(data.serverId)
+        updateServerStatus(serverId, 'connected')
+        addTerminalLine(serverId, `✓ Connecté au serveur ${data.serverId}`, 'output')
       })
       
       socketService.onSSHDisconnected((data) => {
-        updateServerStatus(data.serverId, 'disconnected')
-        addTerminalLine(`✗ Déconnecté du serveur ${data.serverId}`, 'error')
+        const serverId = parseInt(data.serverId)
+        updateServerStatus(serverId, 'disconnected')
+        addTerminalLine(serverId, `✗ Déconnecté du serveur ${data.serverId}`, 'error')
       })
     }
 
     return () => {
-      socketService.disconnect()
+      // Ne pas déconnecter le socket pour garder la connexion
+      // socketService.disconnect()
     }
   }, [])
 
@@ -93,7 +102,6 @@ export default function SSH() {
       const response = await sshAPI.getServers()
       const serversData = response.data.data || response.data.servers || response.data || []
       
-      // Mapper les serveurs avec un statut par défaut
       const mappedServers = serversData.map((server: any) => ({
         ...server,
         status: server.connected ? 'connected' : 'disconnected'
@@ -110,7 +118,6 @@ export default function SSH() {
       const response = await sshAPI.addServer(newServer)
       const newServerData = response.data.data || response.data.server || response.data
       
-      // Ajouter le statut par défaut
       const serverWithStatus = {
         ...newServerData,
         status: 'disconnected' as const
@@ -132,8 +139,8 @@ export default function SSH() {
       await sshAPI.deleteServer(serverId)
       setServers(prev => prev.filter(s => s.id !== serverId))
       if (selectedServer === serverId) {
-        setSelectedServer(null)
-        setTerminalLines([])
+        setSelectedServerId(null)
+        clearTerminal(serverId)
       }
     } catch (error) {
       console.error('Erreur lors de la suppression:', error)
@@ -144,19 +151,18 @@ export default function SSH() {
     try {
       updateServerStatus(serverId, 'connecting')
       await sshAPI.connect(serverId)
-      setSelectedServer(serverId)
-      setTerminalLines([])
-      addTerminalLine(`Connexion au serveur...`, 'output')
+      setSelectedServerId(serverId)
+      addTerminalLine(serverId, `Connexion au serveur...`, 'output')
     } catch (error: any) {
       updateServerStatus(serverId, 'disconnected')
-      addTerminalLine(`Erreur de connexion: ${error.message}`, 'error')
+      addTerminalLine(serverId, `Erreur de connexion: ${error.message}`, 'error')
     }
   }
 
   const executeCommand = async () => {
     if (!command.trim() || !selectedServer || isExecuting) return
 
-    addTerminalLine(command, 'command')
+    addTerminalLine(selectedServer, command, 'command')
     setIsExecuting(true)
 
     try {
@@ -164,20 +170,10 @@ export default function SSH() {
       setCommand('')
     } catch (error) {
       console.error('Erreur lors de l\'exécution:', error)
-      addTerminalLine('Erreur lors de l\'exécution de la commande', 'error')
+      addTerminalLine(selectedServer, 'Erreur lors de l\'exécution de la commande', 'error')
     } finally {
       setIsExecuting(false)
     }
-  }
-
-  const addTerminalLine = (content: string, type: 'command' | 'output' | 'error') => {
-    const newLine: TerminalLine = {
-      id: Date.now().toString(),
-      content,
-      type,
-      timestamp: new Date(),
-    }
-    setTerminalLines(prev => [...prev, newLine])
   }
 
   const updateServerStatus = (serverId: number, status: NonNullable<SSHServer['status']>) => {
@@ -193,6 +189,12 @@ export default function SSH() {
     }
   }
 
+  const handleClearTerminal = () => {
+    if (selectedServer) {
+      clearTerminal(selectedServer)
+    }
+  }
+
   const selectedServerData = servers.find(s => s.id === selectedServer)
 
   return (
@@ -200,7 +202,6 @@ export default function SSH() {
       <div className="h-[calc(100vh-4rem)] flex">
         {/* Sidebar - Liste des serveurs */}
         <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-          {/* Header */}
           <div className="p-4 border-b border-gray-200">
             <button
               onClick={() => setIsAddingServer(true)}
@@ -211,7 +212,6 @@ export default function SSH() {
             </button>
           </div>
 
-          {/* Liste des serveurs */}
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             {servers.length === 0 ? (
               <div className="p-8 text-center">
@@ -235,7 +235,7 @@ export default function SSH() {
                       if (server.status === 'disconnected' || !server.status) {
                         connectToServer(server.id)
                       } else {
-                        setSelectedServer(server.id)
+                        setSelectedServerId(server.id)
                       }
                     }}
                   >
@@ -259,7 +259,6 @@ export default function SSH() {
                       </button>
                     </div>
                     
-                    {/* Status */}
                     <div className="flex items-center space-x-2">
                       {server.status === 'connected' && (
                         <>
@@ -291,7 +290,6 @@ export default function SSH() {
         <div className="flex-1 flex flex-col">
           {selectedServer ? (
             <>
-              {/* Header du terminal */}
               <div className="bg-gray-800 p-4 flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <TerminalIcon className="w-5 h-5 text-green-400" />
@@ -305,6 +303,13 @@ export default function SSH() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
+                  <button
+                    onClick={handleClearTerminal}
+                    className="p-2 hover:bg-gray-700 rounded transition-colors"
+                    title="Effacer le terminal"
+                  >
+                    <RotateCcw className="w-4 h-4 text-gray-400" />
+                  </button>
                   {selectedServerData?.status === 'connected' ? (
                     <div className="flex items-center space-x-2 px-3 py-1 bg-green-900 rounded-lg">
                       <CheckCircle2 className="w-4 h-4 text-green-400" />
@@ -319,7 +324,6 @@ export default function SSH() {
                 </div>
               </div>
 
-              {/* Sortie du terminal */}
               <div className="flex-1 terminal overflow-y-auto">
                 {terminalLines.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
@@ -351,7 +355,6 @@ export default function SSH() {
                 )}
               </div>
 
-              {/* Zone de saisie de commande */}
               <div className="bg-gray-900 p-4 border-t border-gray-700">
                 <div className="flex items-center space-x-3">
                   <span className="text-green-400 font-mono">$</span>
