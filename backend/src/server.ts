@@ -14,6 +14,7 @@ dotenv.config();
 import authRoutes from './routes/auth';
 import chatRoutes from './routes/chat';
 import sshRoutes from './routes/ssh';
+import statsRoutes from './routes/stats';
 
 // Import des configurations
 import pool from './config/database';
@@ -111,6 +112,7 @@ app.get('/', (req: Request, res: Response) => {
       auth: '/api/auth',
       chat: '/api/chat',
       ssh: '/api/ssh',
+      stats: '/api/stats',
       health: '/api/health'
     }
   });
@@ -151,6 +153,7 @@ app.get('/api/health', async (req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/ssh', sshRoutes);
+app.use('/api/stats', statsRoutes);
 
 // Gestion des routes non trouvées
 app.use('*', (req: Request, res: Response) => {
@@ -333,25 +336,43 @@ const startServer = async () => {
 };
 
 // Gestion arrêt gracieux
+let isShuttingDown = false;
+
 process.on('SIGTERM', async () => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  
   console.log('SIGTERM reçu, arrêt du serveur...');
   httpServer.close(async () => {
-    await SSHService.disconnectAll();
-    await pool.end();
-    await redisClient.quit();
-    console.log('Serveur arrêté proprement');
-    process.exit(0);
+    try {
+      await SSHService.disconnectAll();
+      await pool.end();
+      await redisClient.quit();
+      console.log('Serveur arrêté proprement');
+      process.exit(0);
+    } catch (error) {
+      console.error('Erreur lors de l\'arrêt:', error);
+      process.exit(1);
+    }
   });
 });
 
 process.on('SIGINT', async () => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  
   console.log('\nSIGINT reçu, arrêt du serveur...');
   httpServer.close(async () => {
-    await SSHService.disconnectAll();
-    await pool.end();
-    await redisClient.quit();
-    console.log('Serveur arrêté proprement');
-    process.exit(0);
+    try {
+      await SSHService.disconnectAll();
+      await pool.end();
+      await redisClient.quit();
+      console.log('Serveur arrêté proprement');
+      process.exit(0);
+    } catch (error) {
+      console.error('Erreur lors de l\'arrêt:', error);
+      process.exit(1);
+    }
   });
 });
 

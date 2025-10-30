@@ -37,16 +37,34 @@ export default function Chat() {
   // Récupérer les messages depuis le Context
   const messages = currentConversationId ? getMessagesForConversation(currentConversationId) : []
 
-  // Charger les conversations au montage (une seule fois)
-  useEffect(() => {
-    // Ne charger que si les conversations ne sont pas déjà en mémoire
-    if (conversations.length === 0) {
-      loadConversations()
-    } else if (currentConversationId && messages.length === 0) {
-      // Si une conversation est sélectionnée mais sans messages, les charger
-      loadMessages(currentConversationId)
-    }
+// Charger les conversations au montage (une seule fois)
+useEffect(() => {
+  // Ne charger que si les conversations ne sont pas déjà en mémoire
+  if (conversations.length === 0) {
+    loadConversations()
+  } else if (currentConversationId && messages.length === 0) {
+    // Si une conversation est sélectionnée mais sans messages, les charger
+    loadMessages(currentConversationId)
+  }
+  
+  // Connecter le socket
+  const token = localStorage.getItem('token')
+  if (token) {
+    socketService.connect(token)
     
+    socketService.onNewMessage((message) => {
+      if (currentConversationId) {
+        addMessageToConversation(currentConversationId, message)
+      }
+    })
+  }
+
+  // Ne pas déconnecter pour garder la connexion
+  return () => {
+    // socketService.disconnect()
+  }
+}, [conversations.length, currentConversationId])
+
     // Connecter le socket
     const token = localStorage.getItem('token')
     if (token) {
@@ -261,8 +279,7 @@ export default function Chat() {
                             day: 'numeric',
                             month: 'short',
                             hour: '2-digit',
-                            minute: '2-digit',
-                            timeZone: 'Europe/Paris',
+                            minute: '2-digit'
                           })}
                         </p>
                       </div>
