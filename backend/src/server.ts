@@ -45,12 +45,26 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// CORS
+// CORS - Configuration correcte pour plusieurs origines
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://192.168.136.149:5173'
+];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173', // ✅ Changé pour Vite
+  origin: (origin, callback) => {
+    // Autoriser les requêtes sans origin (comme curl, Postman)
+    if (!origin) return callback(null, true);
+    
+    // Vérifier si l'origine est autorisée
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
-
 // Body parser
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
