@@ -21,7 +21,7 @@
 
 ## 📖 À Propos
 
-**AiSystant** est une plateforme moderne de gestion d'infrastructure qui utilise l'**IA générative** pour transformer le langage naturel en commandes système. Dites simplement "redémarre nginx sur web-01" et laissez l'IA faire le reste !
+**AiSystant** est une plateforme moderne de gestion d'infrastructure qui utilise l'**IA générative** pour transformer le langage naturel en commandes système. Dites simplement "redémarre nginx sur web-01" et laissez l'IA faire le reste !!!
 
 ### ✨ Fonctionnalités Principales
 
