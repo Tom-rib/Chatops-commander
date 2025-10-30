@@ -112,7 +112,7 @@ export default function Dashboard() {
             
               href="/chat"
               className="btn-primary w-full flex items-center justify-center space-x-2"
-            >
+            <a>
               <MessageSquare className="w-5 h-5" />
               <span>Nouvelle conversation</span>
             </a>
