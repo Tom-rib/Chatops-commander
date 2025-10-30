@@ -17,6 +17,7 @@ import sshRoutes from './routes/ssh';
 // Import des configurations
 import pool from './config/database';
 import { connectRedis } from './config/redis';
+import redisClient from './config/redis';
 
 // Import des middlewares
 import { authenticate } from './middleware/auth';
@@ -30,7 +31,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 // Configuration de Socket.IO
 const io = new SocketIOServer(httpServer, {
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173', // ✅ Changé pour Vite
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -40,13 +41,13 @@ const io = new SocketIOServer(httpServer, {
 
 // Middleware de sécurité
 app.use(helmet({
-  contentSecurityPolicy: false, // Désactivé pour le développement
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false
 }));
 
 // CORS
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173', // ✅ Changé pour Vite
   credentials: true
 }));
 
@@ -56,7 +57,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'),
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
   message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard.',
   standardHeaders: true,
@@ -83,6 +84,7 @@ app.get('/', (req: Request, res: Response) => {
     endpoints: {
       auth: '/api/auth',
       chat: '/api/chat',
+      ssh: '/api/ssh',
       health: '/api/health'
     }
   });
@@ -91,8 +93,15 @@ app.get('/', (req: Request, res: Response) => {
 // Health check
 app.get('/api/health', async (req: Request, res: Response) => {
   try {
-    // Test de connexion à PostgreSQL
     await pool.query('SELECT 1');
+    
+    // ✅ Test Redis aussi
+    let redisStatus = 'connected';
+    try {
+      await redisClient.ping();
+    } catch {
+      redisStatus = 'disconnected';
+    }
     
     res.json({
       success: true,
@@ -100,7 +109,7 @@ app.get('/api/health', async (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
       services: {
         database: 'connected',
-        redis: 'connected',
+        redis: redisStatus,
         api: 'running'
       }
     });
@@ -138,28 +147,24 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
-// Configuration de Socket.IO pour le chat en temps réel
+// Configuration de Socket.IO
 io.on('connection', (socket) => {
   console.log(`✅ Nouveau client WebSocket connecté: ${socket.id}`);
 
-  // Joindre une room de conversation
   socket.on('join_conversation', (conversationId: number) => {
     socket.join(`conversation_${conversationId}`);
     console.log(`Client ${socket.id} a rejoint la conversation ${conversationId}`);
   });
 
-  // Quitter une room de conversation
   socket.on('leave_conversation', (conversationId: number) => {
     socket.leave(`conversation_${conversationId}`);
     console.log(`Client ${socket.id} a quitté la conversation ${conversationId}`);
   });
 
-  // Nouveau message (diffusé à tous les clients de la conversation)
   socket.on('new_message', (data: { conversationId: number; message: any }) => {
     io.to(`conversation_${data.conversationId}`).emit('message_received', data.message);
   });
 
-  // Typing indicator
   socket.on('typing', (data: { conversationId: number; username: string }) => {
     socket.to(`conversation_${data.conversationId}`).emit('user_typing', data);
   });
@@ -168,7 +173,6 @@ io.on('connection', (socket) => {
     socket.to(`conversation_${data.conversationId}`).emit('user_stop_typing', data);
   });
 
-  // Déconnexion
   socket.on('disconnect', () => {
     console.log(`❌ Client WebSocket déconnecté: ${socket.id}`);
   });
@@ -181,11 +185,11 @@ const startServer = async () => {
     await connectRedis();
     console.log('✅ Redis connecté');
 
-    // Test de connexion à PostgreSQL
+    // Test PostgreSQL
     await pool.query('SELECT NOW()');
     console.log('✅ PostgreSQL connecté');
 
-    // Démarrage du serveur HTTP
+    // Démarrage du serveur
     httpServer.listen(PORT, HOST, () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('🚀 AiSystant Backend démarré !');
@@ -201,26 +205,27 @@ const startServer = async () => {
   }
 };
 
-// Gestion de l'arrêt gracieux
-process.on('SIGTERM', () => {
+// Gestion arrêt gracieux
+process.on('SIGTERM', async () => {
   console.log('SIGTERM reçu, arrêt du serveur...');
-  httpServer.close(() => {
-    console.log('Serveur arrêté');
-    pool.end();
+  httpServer.close(async () => {
+    await pool.end();
+    await redisClient.quit(); // ✅ Fermer Redis aussi
+    console.log('Serveur arrêté proprement');
     process.exit(0);
   });
 });
 
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('\nSIGINT reçu, arrêt du serveur...');
-  httpServer.close(() => {
-    console.log('Serveur arrêté');
-    pool.end();
+  httpServer.close(async () => {
+    await pool.end();
+    await redisClient.quit(); // ✅ Fermer Redis aussi
+    console.log('Serveur arrêté proprement');
     process.exit(0);
   });
 });
 
-// Démarrer le serveur
 startServer();
 
 export { app, io };
