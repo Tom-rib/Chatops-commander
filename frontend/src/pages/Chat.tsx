@@ -85,7 +85,7 @@ export default function Chat() {
   const createNewConversation = async () => {
     try {
       const response = await chatAPI.createConversation('Nouvelle conversation')
-      const newConv = response.data
+       const newConv = response.data.data
       
       // Vérifier que la conversation a bien été créée
       if (newConv?.id) {
