@@ -2,7 +2,7 @@ import { useState, FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Mail, Lock, AlertCircle, Loader } from 'lucide-react'
-import logo from '../../public/logo-192.png'
+import logo from '/logo-192.png'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -20,7 +20,8 @@ export default function Login() {
 
     try {
       await login(email, password)
-      navigate('/dashboard')
+      // Force la redirection après connexion réussie
+      window.location.href = '/dashboard'
     } catch (err: any) {
       setError(err.message || 'Erreur lors de la connexion')
     } finally {
@@ -121,10 +122,10 @@ export default function Login() {
 
             {/* Demo credentials */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
-              <p className="font-medium text-blue-900 mb-2">🎯 Compte de démonstration</p>
+              <p className="font-medium text-blue-900 mb-2">🎯 Compte de test</p>
               <p className="text-blue-800">
-                <span className="font-mono">Email:</span> demo@aisystant.com<br />
-                <span className="font-mono">Password:</span> demo123
+                <span className="font-mono">Email:</span> admin@aisystant.com<br />
+                <span className="font-mono">Password:</span> admin123
               </p>
             </div>
           </form>
