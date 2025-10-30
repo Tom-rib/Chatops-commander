@@ -18,7 +18,6 @@ interface Conversation {
 }
 
 export default function Chat() {
-//    const { user } = useAuth()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversation, setCurrentConversation] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -86,10 +85,16 @@ export default function Chat() {
   const createNewConversation = async () => {
     try {
       const response = await chatAPI.createConversation('Nouvelle conversation')
-      const newConv = response.data.conversation
-      setConversations(prev => [newConv, ...prev])
-      setCurrentConversation(newConv.id)
-      setMessages([])
+      const newConv = response.data
+      
+      // Vérifier que la conversation a bien été créée
+      if (newConv?.id) {
+        setConversations(prev => [newConv, ...prev])
+        setCurrentConversation(newConv.id)
+        setMessages([])
+      } else {
+        console.error('Conversation créée mais sans ID:', response.data)
+      }
     } catch (error) {
       console.error('Erreur lors de la création de la conversation:', error)
     }
