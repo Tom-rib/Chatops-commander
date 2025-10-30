@@ -32,7 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Configurer le header Authorization
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
           const response = await api.get('/auth/me')
-          setUser(response.data.user)
+          
+          // Gérer différentes structures de réponse
+          const userData = response.data.data?.user || response.data.user || response.data.data || response.data
+          setUser(userData)
         } catch (error) {
           console.error('Token invalide:', error)
           localStorage.removeItem('token')
@@ -51,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Gérer la structure de réponse avec success/data
       const responseData = response.data.data || response.data
-      const { token, user } = responseData
+      const { token, user: userData } = responseData
       
       // Stocker le token
       localStorage.setItem('token', token)
@@ -60,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`
       
       // Mettre à jour l'état utilisateur
-      setUser(user)
+      setUser(userData)
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Erreur de connexion')
     }
@@ -72,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // Gérer la structure de réponse avec success/data
       const responseData = response.data.data || response.data
-      const { token, user } = responseData
+      const { token, user: userData } = responseData
       
       // Stocker le token
       localStorage.setItem('token', token)
@@ -81,9 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`
       
       // Mettre à jour l'état utilisateur
-      setUser(user)
+      setUser(userData)
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Erreur lors de l\'inscription')
+      throw new Error(error.response?.data?.message || "Erreur lors de l'inscription")
     }
   }
 
