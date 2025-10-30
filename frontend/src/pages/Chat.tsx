@@ -180,7 +180,7 @@ export default function Chat() {
               </div>
             ) : (
               <div className="p-2 space-y-2">
-                {conversations.map((conv) => (
+                {conversations.filter(Boolean).map((conv) => (
                   <div
                     key={conv.id}
                     className={`group p-3 rounded-lg cursor-pointer transition-all ${
