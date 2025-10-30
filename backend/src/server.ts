@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { Server as SocketIOServer } from 'socket.io';
 import { createServer } from 'http';
 import rateLimit from 'express-rate-limit';
+import jwt from 'jsonwebtoken';
 
 // Configuration
 dotenv.config();
@@ -18,6 +19,9 @@ import sshRoutes from './routes/ssh';
 import pool from './config/database';
 import { connectRedis } from './config/redis';
 import redisClient from './config/redis';
+
+// Import des services
+import { SSHService } from './services/SSHService';
 
 // Import des middlewares
 import { authenticate } from './middleware/auth';
@@ -72,6 +76,7 @@ app.use(cors({
   },
   credentials: true
 }));
+
 // Body parser
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -116,7 +121,6 @@ app.get('/api/health', async (req: Request, res: Response) => {
   try {
     await pool.query('SELECT 1');
     
-    // ✅ Test Redis aussi
     let redisStatus = 'connected';
     try {
       await redisClient.ping();
@@ -172,6 +176,22 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 io.on('connection', (socket) => {
   console.log(`✅ Nouveau client WebSocket connecté: ${socket.id}`);
 
+  // Authentification du socket
+  const token = socket.handshake.auth.token;
+  let userId: number | null = null;
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'votre-secret-super-secure-change-moi-en-prod') as any;
+      userId = decoded.id;
+      socket.data.userId = userId;
+      console.log(`✅ Socket authentifié pour l'utilisateur ${userId}`);
+    } catch (error) {
+      console.error('❌ Erreur d\'authentification socket:', error);
+    }
+  }
+
+  // Events Chat
   socket.on('join_conversation', (conversationId: number) => {
     socket.join(`conversation_${conversationId}`);
     console.log(`Client ${socket.id} a rejoint la conversation ${conversationId}`);
@@ -192,6 +212,92 @@ io.on('connection', (socket) => {
 
   socket.on('stop_typing', (data: { conversationId: number }) => {
     socket.to(`conversation_${data.conversationId}`).emit('user_stop_typing', data);
+  });
+
+  // Events SSH
+  socket.on('ssh_command', async (data: { serverId: string; command: string }) => {
+    if (!userId) {
+      socket.emit('ssh_error', {
+        serverId: data.serverId,
+        error: 'Non authentifié'
+      });
+      return;
+    }
+
+    try {
+      const serverId = parseInt(data.serverId);
+      console.log(`🔧 Exécution commande SSH sur serveur ${serverId}: ${data.command}`);
+      
+      const result = await SSHService.executeCommand(serverId, data.command, userId);
+      
+      socket.emit('ssh_output', {
+        serverId: data.serverId,
+        output: result.output
+      });
+
+      // Notifier si erreur
+      if (result.exitCode !== 0) {
+        socket.emit('ssh_error', {
+          serverId: data.serverId,
+          error: result.error || 'Commande échouée'
+        });
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur SSH:', error);
+      socket.emit('ssh_error', {
+        serverId: data.serverId,
+        error: error.message
+      });
+    }
+  });
+
+  socket.on('ssh_connect', async (data: { serverId: string }) => {
+    if (!userId) {
+      socket.emit('ssh_error', {
+        serverId: data.serverId,
+        error: 'Non authentifié'
+      });
+      return;
+    }
+
+    try {
+      const serverId = parseInt(data.serverId);
+      console.log(`🔌 Connexion SSH au serveur ${serverId}`);
+      
+      const result = await SSHService.connect(serverId);
+      
+      if (result.success) {
+        socket.emit('ssh_connected', {
+          serverId: data.serverId
+        });
+      } else {
+        socket.emit('ssh_error', {
+          serverId: data.serverId,
+          error: result.message
+        });
+      }
+    } catch (error: any) {
+      console.error('❌ Erreur connexion SSH:', error);
+      socket.emit('ssh_error', {
+        serverId: data.serverId,
+        error: error.message
+      });
+    }
+  });
+
+  socket.on('ssh_disconnect', async (data: { serverId: string }) => {
+    try {
+      const serverId = parseInt(data.serverId);
+      console.log(`🔌 Déconnexion SSH du serveur ${serverId}`);
+      
+      await SSHService.disconnect(serverId);
+      
+      socket.emit('ssh_disconnected', {
+        serverId: data.serverId
+      });
+    } catch (error: any) {
+      console.error('❌ Erreur déconnexion SSH:', error);
+    }
   });
 
   socket.on('disconnect', () => {
@@ -230,8 +336,9 @@ const startServer = async () => {
 process.on('SIGTERM', async () => {
   console.log('SIGTERM reçu, arrêt du serveur...');
   httpServer.close(async () => {
+    await SSHService.disconnectAll();
     await pool.end();
-    await redisClient.quit(); // ✅ Fermer Redis aussi
+    await redisClient.quit();
     console.log('Serveur arrêté proprement');
     process.exit(0);
   });
@@ -240,8 +347,9 @@ process.on('SIGTERM', async () => {
 process.on('SIGINT', async () => {
   console.log('\nSIGINT reçu, arrêt du serveur...');
   httpServer.close(async () => {
+    await SSHService.disconnectAll();
     await pool.end();
-    await redisClient.quit(); // ✅ Fermer Redis aussi
+    await redisClient.quit();
     console.log('Serveur arrêté proprement');
     process.exit(0);
   });
