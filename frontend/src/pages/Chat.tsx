@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react'
 import { Send, Loader, Plus, Trash2, MessageSquare, Bot } from 'lucide-react'
 import ChatMessage from '../components/ChatMessage'
@@ -16,7 +15,6 @@ interface Message {
 }
 
 export default function Chat() {
-  // Utilisation du Context pour persister les données
   const {
     conversations,
     currentConversationId,
@@ -34,38 +32,15 @@ export default function Chat() {
   const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Récupérer les messages depuis le Context
   const messages = currentConversationId ? getMessagesForConversation(currentConversationId) : []
 
-// Charger les conversations au montage (une seule fois)
-useEffect(() => {
-  // Ne charger que si les conversations ne sont pas déjà en mémoire
-  if (conversations.length === 0) {
-    loadConversations()
-  } else if (currentConversationId && messages.length === 0) {
-    // Si une conversation est sélectionnée mais sans messages, les charger
-    loadMessages(currentConversationId)
-  }
-  
-  // Connecter le socket
-  const token = localStorage.getItem('token')
-  if (token) {
-    socketService.connect(token)
+  useEffect(() => {
+    if (conversations.length === 0) {
+      loadConversations()
+    } else if (currentConversationId && messages.length === 0) {
+      loadMessages(currentConversationId)
+    }
     
-    socketService.onNewMessage((message) => {
-      if (currentConversationId) {
-        addMessageToConversation(currentConversationId, message)
-      }
-    })
-  }
-
-  // Ne pas déconnecter pour garder la connexion
-  return () => {
-    // socketService.disconnect()
-  }
-}, [conversations.length, currentConversationId])
-
-    // Connecter le socket
     const token = localStorage.getItem('token')
     if (token) {
       socketService.connect(token)
@@ -77,13 +52,11 @@ useEffect(() => {
       })
     }
 
-    // Ne pas déconnecter pour garder la connexion
     return () => {
       // socketService.disconnect()
     }
-  }, [])
+  }, [conversations.length, currentConversationId])
 
-  // Auto-scroll vers le bas quand de nouveaux messages arrivent
   useEffect(() => {
     scrollToBottom()
   }, [messages])
@@ -98,7 +71,6 @@ useEffect(() => {
       const convs = response.data.data || response.data.conversations || []
       setConversations(convs)
       
-      // Sélectionner la première conversation si aucune n'est sélectionnée
       if (convs.length > 0 && !currentConversationId) {
         loadMessages(convs[0].id)
       }
@@ -108,7 +80,6 @@ useEffect(() => {
   }
 
   const loadMessages = async (conversationId: number) => {
-    // Si les messages sont déjà en cache, juste changer la conversation active
     const cachedMessages = getMessagesForConversation(conversationId)
     if (cachedMessages.length > 0) {
       setCurrentConversationId(conversationId)
@@ -157,7 +128,6 @@ useEffect(() => {
       if (currentConversationId === conversationId) {
         setCurrentConversationId(null)
         
-        // Sélectionner la première conversation restante
         if (conversations.length > 1) {
           const remaining = conversations.filter(c => c.id !== conversationId)
           if (remaining.length > 0) {
@@ -177,7 +147,6 @@ useEffect(() => {
     setInputMessage('')
     setIsSending(true)
 
-    // Ajouter immédiatement le message utilisateur
     const tempUserMessage: Message = {
       id: Date.now(),
       content: messageContent,
@@ -192,7 +161,6 @@ useEffect(() => {
       const data = response.data.data
       
       if (data.userMessage && data.assistantMessage) {
-        // Retirer le message temporaire et ajouter les vrais messages
         const currentMessages = getMessagesForConversation(currentConversationId)
         const withoutTemp = currentMessages.filter(m => m.id !== tempUserMessage.id)
         setMessagesForConversation(currentConversationId, [
@@ -201,7 +169,6 @@ useEffect(() => {
           data.assistantMessage
         ])
         
-        // Recharger la liste des conversations pour mettre à jour les titres
         const convResponse = await chatAPI.getConversations()
         const convs = convResponse.data.data || convResponse.data.conversations || []
         setConversations(convs)
@@ -209,11 +176,9 @@ useEffect(() => {
     } catch (error: any) {
       console.error('Erreur lors de l\'envoi du message:', error)
       
-      // Retirer le message temporaire
       const currentMessages = getMessagesForConversation(currentConversationId)
       const withoutTemp = currentMessages.filter(m => m.id !== tempUserMessage.id)
       
-      // Ajouter un message d'erreur
       const errorMessage: Message = {
         id: Date.now() + 1,
         content: `Erreur: ${error.response?.data?.message || error.message || 'Une erreur est survenue'}`,
@@ -236,7 +201,6 @@ useEffect(() => {
   return (
     <div className="min-h-screen bg-background">
       <div className="h-[calc(100vh-4rem)] flex">
-        {/* Sidebar - Liste des conversations */}
         <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
           <div className="p-4 border-b border-gray-200">
             <button
@@ -300,7 +264,6 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Zone de chat principale */}
         <div className="flex-1 flex flex-col">
           {currentConversationId ? (
             <>
