@@ -51,7 +51,6 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const removeConversation = (id: number) => {
     setConversationsState(prev => prev.filter(c => c.id !== id))
-    // Nettoyer les messages de cette conversation
     setMessages(prev => {
       const newMap = new Map(prev)
       newMap.delete(id)

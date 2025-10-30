@@ -3,6 +3,7 @@ import { Send, Loader, Plus, Trash2, MessageSquare, Bot } from 'lucide-react'
 import ChatMessage from '../components/ChatMessage'
 import { chatAPI } from '../services/api'
 import { socketService } from '../services/socket'
+import { useChat } from '../context/ChatContext'
 
 interface Message {
   id: number
@@ -13,42 +14,52 @@ interface Message {
   user_id?: number
 }
 
-interface Conversation {
-  id: number
-  title: string
-  created_at: string
-  updated_at: string
-  user_id: number
-  message_count?: number
-  last_message_at?: string
-}
-
 export default function Chat() {
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [currentConversation, setCurrentConversation] = useState<number | null>(null)
-  const [messages, setMessages] = useState<Message[]>([])
+  // Utilisation du Context pour persister les données
+  const {
+    conversations,
+    currentConversationId,
+    setConversations,
+    setCurrentConversationId,
+    addConversation,
+    removeConversation,
+    setMessagesForConversation,
+    addMessageToConversation,
+    getMessagesForConversation,
+  } = useChat()
+
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Charger les conversations au montage
+  // Récupérer les messages depuis le Context
+  const messages = currentConversationId ? getMessagesForConversation(currentConversationId) : []
+
+  // Charger les conversations au montage (une seule fois)
   useEffect(() => {
-    loadConversations()
+    // Ne charger que si les conversations ne sont pas déjà en mémoire
+    if (conversations.length === 0) {
+      loadConversations()
+    } else if (currentConversationId && messages.length === 0) {
+      // Si une conversation est sélectionnée mais sans messages, les charger
+      loadMessages(currentConversationId)
+    }
     
     // Connecter le socket
     const token = localStorage.getItem('token')
     if (token) {
       socketService.connect(token)
       
-      // Écouter les nouveaux messages
       socketService.onNewMessage((message) => {
-        setMessages(prev => [...prev, message])
+        if (currentConversationId) {
+          addMessageToConversation(currentConversationId, message)
+        }
       })
     }
 
+    // Ne pas déconnecter pour garder la connexion
     return () => {
-      // Ne pas déconnecter pour garder la connexion
       // socketService.disconnect()
     }
   }, [])
@@ -68,8 +79,8 @@ export default function Chat() {
       const convs = response.data.data || response.data.conversations || []
       setConversations(convs)
       
-      // Sélectionner la première conversation par défaut si aucune n'est sélectionnée
-      if (convs.length > 0 && !currentConversation) {
+      // Sélectionner la première conversation si aucune n'est sélectionnée
+      if (convs.length > 0 && !currentConversationId) {
         loadMessages(convs[0].id)
       }
     } catch (error) {
@@ -78,19 +89,25 @@ export default function Chat() {
   }
 
   const loadMessages = async (conversationId: number) => {
+    // Si les messages sont déjà en cache, juste changer la conversation active
+    const cachedMessages = getMessagesForConversation(conversationId)
+    if (cachedMessages.length > 0) {
+      setCurrentConversationId(conversationId)
+      return
+    }
+
     setIsLoading(true)
-    setCurrentConversation(conversationId)
+    setCurrentConversationId(conversationId)
     
     try {
       const response = await chatAPI.getConversation(conversationId)
       const data = response.data.data
       
-      // Les messages peuvent être dans data.messages ou data.conversation.messages
       const msgs = data.messages || data.conversation?.messages || []
-      setMessages(msgs)
+      setMessagesForConversation(conversationId, msgs)
     } catch (error) {
       console.error('Erreur lors du chargement des messages:', error)
-      setMessages([])
+      setMessagesForConversation(conversationId, [])
     } finally {
       setIsLoading(false)
     }
@@ -102,9 +119,9 @@ export default function Chat() {
       const newConv = response.data.data
       
       if (newConv?.id) {
-        setConversations(prev => [newConv, ...prev])
-        setCurrentConversation(newConv.id)
-        setMessages([])
+        addConversation(newConv)
+        setCurrentConversationId(newConv.id)
+        setMessagesForConversation(newConv.id, [])
       }
     } catch (error) {
       console.error('Erreur lors de la création de la conversation:', error)
@@ -116,16 +133,17 @@ export default function Chat() {
 
     try {
       await chatAPI.deleteConversation(conversationId)
-      setConversations(prev => prev.filter(c => c.id !== conversationId))
+      removeConversation(conversationId)
       
-      if (currentConversation === conversationId) {
-        setCurrentConversation(null)
-        setMessages([])
+      if (currentConversationId === conversationId) {
+        setCurrentConversationId(null)
         
         // Sélectionner la première conversation restante
-        const remaining = conversations.filter(c => c.id !== conversationId)
-        if (remaining.length > 0) {
-          loadMessages(remaining[0].id)
+        if (conversations.length > 1) {
+          const remaining = conversations.filter(c => c.id !== conversationId)
+          if (remaining.length > 0) {
+            loadMessages(remaining[0].id)
+          }
         }
       }
     } catch (error) {
@@ -134,53 +152,56 @@ export default function Chat() {
   }
 
   const sendMessage = async () => {
-    if (!inputMessage.trim() || !currentConversation || isSending) return
+    if (!inputMessage.trim() || !currentConversationId || isSending) return
 
     const messageContent = inputMessage.trim()
     setInputMessage('')
     setIsSending(true)
 
-    // Ajouter immédiatement le message utilisateur à l'affichage
+    // Ajouter immédiatement le message utilisateur
     const tempUserMessage: Message = {
       id: Date.now(),
       content: messageContent,
       role: 'user',
       created_at: new Date().toISOString(),
-      conversation_id: currentConversation,
+      conversation_id: currentConversationId,
     }
-    setMessages(prev => [...prev, tempUserMessage])
+    addMessageToConversation(currentConversationId, tempUserMessage)
 
     try {
-      const response = await chatAPI.sendMessage(currentConversation, messageContent)
+      const response = await chatAPI.sendMessage(currentConversationId, messageContent)
       const data = response.data.data
       
-      // Remplacer le message temporaire par le vrai message utilisateur
-      // et ajouter la réponse de l'assistant
       if (data.userMessage && data.assistantMessage) {
-        setMessages(prev => {
-          // Retirer le message temporaire
-          const withoutTemp = prev.filter(m => m.id !== tempUserMessage.id)
-          // Ajouter les vrais messages
-          return [...withoutTemp, data.userMessage, data.assistantMessage]
-        })
+        // Retirer le message temporaire et ajouter les vrais messages
+        const currentMessages = getMessagesForConversation(currentConversationId)
+        const withoutTemp = currentMessages.filter(m => m.id !== tempUserMessage.id)
+        setMessagesForConversation(currentConversationId, [
+          ...withoutTemp,
+          data.userMessage,
+          data.assistantMessage
+        ])
         
         // Recharger la liste des conversations pour mettre à jour les titres
-        loadConversations()
+        const convResponse = await chatAPI.getConversations()
+        const convs = convResponse.data.data || convResponse.data.conversations || []
+        setConversations(convs)
       }
     } catch (error: any) {
       console.error('Erreur lors de l\'envoi du message:', error)
       
       // Retirer le message temporaire
-      setMessages(prev => prev.filter(m => m.id !== tempUserMessage.id))
+      const currentMessages = getMessagesForConversation(currentConversationId)
+      const withoutTemp = currentMessages.filter(m => m.id !== tempUserMessage.id)
       
-      // Afficher un message d'erreur
+      // Ajouter un message d'erreur
       const errorMessage: Message = {
         id: Date.now() + 1,
         content: `Erreur: ${error.response?.data?.message || error.message || 'Une erreur est survenue'}`,
         role: 'system',
         created_at: new Date().toISOString(),
       }
-      setMessages(prev => [...prev, errorMessage])
+      setMessagesForConversation(currentConversationId, [...withoutTemp, errorMessage])
     } finally {
       setIsSending(false)
     }
@@ -225,7 +246,7 @@ export default function Chat() {
                   <div
                     key={conv.id}
                     className={`group p-3 rounded-lg cursor-pointer transition-all ${
-                      currentConversation === conv.id
+                      currentConversationId === conv.id
                         ? 'bg-primary-50 border-2 border-primary'
                         : 'hover:bg-gray-50 border-2 border-transparent'
                     }`}
@@ -242,6 +263,7 @@ export default function Chat() {
                             month: 'short',
                             hour: '2-digit',
                             minute: '2-digit'
+                            timeZone: 'Europe/Paris'
                           })}
                         </p>
                       </div>
@@ -264,7 +286,7 @@ export default function Chat() {
 
         {/* Zone de chat principale */}
         <div className="flex-1 flex flex-col">
-          {currentConversation ? (
+          {currentConversationId ? (
             <>
               {/* Messages */}
               <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
